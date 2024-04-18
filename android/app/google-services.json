@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "571257878250",
+    "project_id": "tugasakhirpickleapp",
+    "storage_bucket": "tugasakhirpickleapp.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:571257878250:android:780b71b06303898b9f8993",
+        "android_client_info": {
+          "package_name": "com.example.pickleapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlsFWer3k8u7BbfOHHrPXRHbeluTooYTI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
