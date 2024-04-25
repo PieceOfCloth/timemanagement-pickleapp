@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pickleapp/screen/class/profile.dart';
-import 'package:pickleapp/screen/components/buttonWhite.dart';
+import 'package:pickleapp/screen/components/button_white.dart';
 import 'package:pickleapp/theme.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -9,9 +9,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-import 'package:pickleapp/screen/components/inputTextOpt.dart';
-import 'package:pickleapp/screen/components/inputImage.dart';
-import 'package:pickleapp/screen/components/buttonCalmBlue.dart';
+import 'package:pickleapp/screen/components/input_text_opt.dart';
+import 'package:pickleapp/screen/components/input_image.dart';
+import 'package:pickleapp/screen/components/button_calm_blue.dart';
 
 import 'package:pickleapp/screen/page/home.dart';
 import 'package:pickleapp/screen/page/profile.dart';

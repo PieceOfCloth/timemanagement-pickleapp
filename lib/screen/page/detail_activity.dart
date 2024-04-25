@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
 
-import 'package:pickleapp/screen/class/activityDetail.dart';
+import 'package:pickleapp/screen/class/activity_detail.dart';
 
 class DetailActivity extends StatefulWidget {
   final String activityID;

@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:pickleapp/theme.dart';
 
 class Report extends StatefulWidget {
+  const Report({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _ReportState createState() => _ReportState();
 }
 

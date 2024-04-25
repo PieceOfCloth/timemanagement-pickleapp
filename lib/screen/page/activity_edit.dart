@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
-import 'package:pickleapp/screen/components/buttonCalmBlue.dart';
-import 'package:pickleapp/screen/components/buttonWhite.dart';
+import 'package:pickleapp/screen/components/button_calm_blue.dart';
+import 'package:pickleapp/screen/components/button_white.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:flutter_osm_plugin/flutter_osm_plugin.dart' as osm;
 import 'package:url_launcher/url_launcher.dart';
@@ -20,7 +20,7 @@ import 'package:pickleapp/screen/class/notification.dart';
 import 'package:pickleapp/screen/class/location.dart';
 import 'package:pickleapp/screen/class/file.dart';
 import 'package:pickleapp/screen/class/timezone.dart';
-import 'package:pickleapp/screen/components/inputFile.dart';
+import 'package:pickleapp/screen/components/input_file.dart';
 import 'package:pickleapp/theme.dart';
 
 class ActivityEdits extends StatefulWidget {
@@ -50,6 +50,7 @@ class _ActivityEditsState extends State<ActivityEdits> {
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
+  // ignore: prefer_typing_uninitialized_variables
   var geoPoint;
 
   String? importance;
@@ -106,7 +107,7 @@ class _ActivityEditsState extends State<ActivityEdits> {
             "Importance and Urgency Info",
             style: subHeaderStyle,
           ),
-          content: Container(
+          content: SizedBox(
             width: double.maxFinite,
             child: InteractiveViewer(
               boundaryMargin: const EdgeInsets.all(20),
@@ -256,6 +257,7 @@ class _ActivityEditsState extends State<ActivityEdits> {
                   .map((minute) => Notifications(minute: int.parse(minute)))
                   .toList();
 
+      // ignore: avoid_print
       print(widget.activity);
     });
   }
@@ -271,7 +273,7 @@ class _ActivityEditsState extends State<ActivityEdits> {
 
     List<DropdownMenuItem<String>> items = [];
 
-    data.docs.forEach((element) {
+    for (var element in data.docs) {
       String catTitle = element['title'];
 
       items.add(DropdownMenuItem(
@@ -281,7 +283,7 @@ class _ActivityEditsState extends State<ActivityEdits> {
           style: textStyle,
         ),
       ));
-    });
+    }
 
     setState(() {
       dropdownCat = items;
@@ -315,7 +317,6 @@ class _ActivityEditsState extends State<ActivityEdits> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     getCategoryData();
 
@@ -363,18 +364,268 @@ class _ActivityEditsState extends State<ActivityEdits> {
               child: Column(
                 children: [
                   // Activity Title Input
-                  Container(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Activity Title",
-                          style: subHeaderStyleGrey,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Activity Title",
+                        style: subHeaderStyleGrey,
+                      ),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      Container(
+                        padding: const EdgeInsets.only(
+                          left: 10,
+                          right: 10,
                         ),
-                        const SizedBox(
-                          height: 5,
+                        alignment: Alignment.centerLeft,
+                        height: 40,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.grey,
+                            width: 1.0,
+                          ),
                         ),
-                        Container(
+                        child: TextFormField(
+                          autofocus: false,
+                          keyboardType: TextInputType.text,
+                          textCapitalization: TextCapitalization.words,
+                          style: textStyle,
+                          decoration: InputDecoration(
+                            hintText: "Enter your activity title here",
+                            hintStyle: textStyleGrey,
+                          ),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return 'Opps, You need to fill this';
+                            } else {
+                              return null;
+                            }
+                          },
+                          controller: title,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(
+                    height: 5,
+                  ),
+                  // Activity Important n Urgent Types
+                  Row(
+                    children: [
+                      // Important
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: Text(
+                                    "Importance",
+                                    style: subHeaderStyleGrey,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 5,
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      _showInfoDialogPriority(context);
+                                    },
+                                    child: const Icon(
+                                      Icons.info,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.only(
+                                left: 10,
+                                right: 10,
+                              ),
+                              alignment: Alignment.centerLeft,
+                              height: 40,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.grey,
+                                  width: 1.0,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: DropdownButtonFormField(
+                                isExpanded: true,
+                                value: importance,
+                                hint: Text(
+                                  "Choose one only",
+                                  style: textStyleGrey,
+                                ),
+                                items: [
+                                  DropdownMenuItem(
+                                    value: "Important",
+                                    child: Text(
+                                      "Important",
+                                      style: textStyle,
+                                    ),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: "Not Important",
+                                    child: Text(
+                                      "Not Important",
+                                      style: textStyle,
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (String? v) {
+                                  setState(() {
+                                    importance = v;
+                                  });
+                                },
+                                validator: (value) {
+                                  if (value == null) {
+                                    return 'Oops, please select an option :)';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(
+                        width: 5,
+                      ),
+                      // Urgent
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: Text(
+                                    "Urgency",
+                                    style: subHeaderStyleGrey,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 5,
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      _showInfoDialogPriority(context);
+                                    },
+                                    child: const Icon(
+                                      Icons.info,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.only(
+                                left: 10,
+                                right: 10,
+                              ),
+                              alignment: Alignment.centerLeft,
+                              height: 40,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.grey,
+                                  width: 1.0,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: DropdownButtonFormField(
+                                isExpanded: true,
+                                value: urgent,
+                                hint: Text(
+                                  "Choose one only",
+                                  style: textStyleGrey,
+                                ),
+                                items: [
+                                  DropdownMenuItem(
+                                    value: "Urgent",
+                                    child: Text(
+                                      "Urgent",
+                                      style: textStyle,
+                                    ),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: "Not Urgent",
+                                    child: Text(
+                                      "Not Urgent",
+                                      style: textStyle,
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (String? v) {
+                                  setState(() {
+                                    urgent = v;
+                                  });
+                                },
+                                validator: (value) {
+                                  if (value == null) {
+                                    return 'Oops, please select an option :)';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(
+                    height: 5,
+                  ),
+                  // Date
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Date",
+                        style: subHeaderStyleGrey,
+                      ),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.now(),
+                                  firstDate: DateTime(2024),
+                                  lastDate: DateTime(2100))
+                              .then((value) {
+                            setState(() {
+                              calendarDate.text =
+                                  value.toString().substring(0, 10);
+                            });
+                          });
+                        },
+                        child: Container(
                           padding: const EdgeInsets.only(
                             left: 10,
                             right: 10,
@@ -389,211 +640,39 @@ class _ActivityEditsState extends State<ActivityEdits> {
                               width: 1.0,
                             ),
                           ),
-                          child: TextFormField(
-                            autofocus: false,
-                            keyboardType: TextInputType.text,
-                            textCapitalization: TextCapitalization.words,
-                            style: textStyle,
-                            decoration: InputDecoration(
-                              hintText: "Enter your activity title here",
-                              hintStyle: textStyleGrey,
-                            ),
-                            validator: (v) {
-                              if (v == null || v.isEmpty) {
-                                return 'Opps, You need to fill this';
-                              } else {
-                                return null;
-                              }
-                            },
-                            controller: title,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 5,
-                  ),
-                  // Activity Important n Urgent Types
-                  Row(
-                    children: [
-                      // Important
-                      Expanded(
-                        child: Container(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex: 6,
-                                    child: Text(
-                                      "Importance",
-                                      style: subHeaderStyleGrey,
-                                    ),
+                              Expanded(
+                                flex: 6,
+                                child: TextFormField(
+                                  autofocus: false,
+                                  readOnly: true,
+                                  keyboardType: TextInputType.text,
+                                  textCapitalization:
+                                      TextCapitalization.sentences,
+                                  style: textStyle,
+                                  decoration: InputDecoration(
+                                    hintText: "Choose your date",
+                                    hintStyle: textStyleGrey,
                                   ),
-                                  const SizedBox(
-                                    width: 5,
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        _showInfoDialogPriority(context);
-                                      },
-                                      child: const Icon(
-                                        Icons.info,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                  validator: (v) {
+                                    if (v == null || v.isEmpty) {
+                                      return 'Opps, You need to fill this';
+                                    } else {
+                                      return null;
+                                    }
+                                  },
+                                  controller: calendarDate,
+                                ),
                               ),
                               const SizedBox(
-                                height: 5,
+                                width: 5,
                               ),
-                              Container(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                ),
-                                alignment: Alignment.centerLeft,
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey,
-                                    width: 1.0,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: DropdownButtonFormField(
-                                  isExpanded: true,
-                                  value: importance,
-                                  hint: Text(
-                                    "Choose one only",
-                                    style: textStyleGrey,
-                                  ),
-                                  items: [
-                                    DropdownMenuItem(
-                                      value: "Important",
-                                      child: Text(
-                                        "Important",
-                                        style: textStyle,
-                                      ),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: "Not Important",
-                                      child: Text(
-                                        "Not Important",
-                                        style: textStyle,
-                                      ),
-                                    ),
-                                  ],
-                                  onChanged: (String? v) {
-                                    setState(() {
-                                      importance = v;
-                                    });
-                                  },
-                                  validator: (value) {
-                                    if (value == null) {
-                                      return 'Oops, please select an option :)';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(
-                        width: 5,
-                      ),
-                      // Urgent
-                      Expanded(
-                        child: Container(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex: 6,
-                                    child: Text(
-                                      "Urgency",
-                                      style: subHeaderStyleGrey,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    width: 5,
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        _showInfoDialogPriority(context);
-                                      },
-                                      child: const Icon(
-                                        Icons.info,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 5,
-                              ),
-                              Container(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                ),
-                                alignment: Alignment.centerLeft,
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey,
-                                    width: 1.0,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: DropdownButtonFormField(
-                                  isExpanded: true,
-                                  value: urgent,
-                                  hint: Text(
-                                    "Choose one only",
-                                    style: textStyleGrey,
-                                  ),
-                                  items: [
-                                    DropdownMenuItem(
-                                      value: "Urgent",
-                                      child: Text(
-                                        "Urgent",
-                                        style: textStyle,
-                                      ),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: "Not Urgent",
-                                      child: Text(
-                                        "Not Urgent",
-                                        style: textStyle,
-                                      ),
-                                    ),
-                                  ],
-                                  onChanged: (String? v) {
-                                    setState(() {
-                                      urgent = v;
-                                    });
-                                  },
-                                  validator: (value) {
-                                    if (value == null) {
-                                      return 'Oops, please select an option :)';
-                                    }
-                                    return null;
-                                  },
+                              const Expanded(
+                                flex: 2,
+                                child: Icon(
+                                  Icons.calendar_month_rounded,
+                                  color: Colors.grey,
                                 ),
                               ),
                             ],
@@ -605,244 +684,49 @@ class _ActivityEditsState extends State<ActivityEdits> {
                   const SizedBox(
                     height: 5,
                   ),
-                  // Date
-                  Container(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Date",
-                          style: subHeaderStyleGrey,
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            showDatePicker(
-                                    context: context,
-                                    initialDate: DateTime.now(),
-                                    firstDate: DateTime(2024),
-                                    lastDate: DateTime(2100))
-                                .then((value) {
-                              setState(() {
-                                calendarDate.text =
-                                    value.toString().substring(0, 10);
-                              });
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.only(
-                              left: 10,
-                              right: 10,
-                            ),
-                            alignment: Alignment.centerLeft,
-                            height: 40,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: Colors.grey,
-                                width: 1.0,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  flex: 6,
-                                  child: TextFormField(
-                                    autofocus: false,
-                                    readOnly: true,
-                                    keyboardType: TextInputType.text,
-                                    textCapitalization:
-                                        TextCapitalization.sentences,
-                                    style: textStyle,
-                                    decoration: InputDecoration(
-                                      hintText: "Choose your date",
-                                      hintStyle: textStyleGrey,
-                                    ),
-                                    validator: (v) {
-                                      if (v == null || v.isEmpty) {
-                                        return 'Opps, You need to fill this';
-                                      } else {
-                                        return null;
-                                      }
-                                    },
-                                    controller: calendarDate,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                const Expanded(
-                                  flex: 2,
-                                  child: Icon(
-                                    Icons.calendar_month_rounded,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 5,
-                  ),
                   // Start time n Duration
                   Row(
                     children: [
                       // Start time
                       Expanded(
-                        child: Container(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Start Time",
-                                style: subHeaderStyleGrey,
-                              ),
-                              const SizedBox(
-                                height: 5,
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  showTimePicker(
-                                    context: context,
-                                    initialTime: TimeOfDay.now(),
-                                  ).then((selectedTime) {
-                                    if (selectedTime != null) {
-                                      setState(() {
-                                        // Convert selectedTime to AM/PM format
-                                        String period =
-                                            selectedTime.period == DayPeriod.am
-                                                ? 'AM'
-                                                : 'PM';
-                                        // Extract hours and minutes
-                                        int hours = selectedTime.hourOfPeriod;
-                                        int minutes = selectedTime.minute;
-                                        // Format the time as a string
-                                        String formattedTime =
-                                            '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')} $period';
-                                        // Update the text field with the selected time
-                                        startTime.text = formattedTime;
-                                        print(startTime.text);
-                                      });
-                                    }
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.only(
-                                    left: 10,
-                                    right: 10,
-                                  ),
-                                  alignment: Alignment.centerLeft,
-                                  height: 40,
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: Colors.grey,
-                                      width: 1.0,
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 6,
-                                        child: TextFormField(
-                                          autofocus: false,
-                                          readOnly: true,
-                                          keyboardType: TextInputType.text,
-                                          textCapitalization:
-                                              TextCapitalization.sentences,
-                                          style: textStyle,
-                                          decoration: InputDecoration(
-                                            hintText:
-                                                "When do you want to start?",
-                                            hintStyle: textStyleGrey,
-                                          ),
-                                          validator: (v) {
-                                            if (v == null || v.isEmpty) {
-                                              return 'Opps, You need to fill this';
-                                            } else {
-                                              return null;
-                                            }
-                                          },
-                                          controller: startTime,
-                                        ),
-                                      ),
-                                      const SizedBox(
-                                        width: 5,
-                                      ),
-                                      const Expanded(
-                                        flex: 2,
-                                        child: Icon(
-                                          Icons.access_time,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(
-                        width: 5,
-                      ),
-                      // Duration
-                      Expanded(
-                        child: Container(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex: 6,
-                                    child: Text(
-                                      "Duration",
-                                      style: subHeaderStyleGrey,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    width: 5,
-                                  ),
-                                  //Tambah informasi (input in a minute)
-                                  Expanded(
-                                    flex: 2,
-                                    child: Tooltip(
-                                      key: _tooltipDuration,
-                                      margin: const EdgeInsets.only(
-                                        left: 80,
-                                        right: 20,
-                                      ),
-                                      message:
-                                          "Please enter the duration in minutes (E.g. input '13' means for 13 minutes)",
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          final dynamic tooltip =
-                                              _tooltipDuration.currentState;
-                                          tooltip.ensureTooltipVisible();
-                                        },
-                                        child: const Icon(
-                                          Icons.info,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 5,
-                              ),
-                              Container(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Start Time",
+                              style: subHeaderStyleGrey,
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay.now(),
+                                ).then((selectedTime) {
+                                  if (selectedTime != null) {
+                                    setState(() {
+                                      // Convert selectedTime to AM/PM format
+                                      String period =
+                                          selectedTime.period == DayPeriod.am
+                                              ? 'AM'
+                                              : 'PM';
+                                      // Extract hours and minutes
+                                      int hours = selectedTime.hourOfPeriod;
+                                      int minutes = selectedTime.minute;
+                                      // Format the time as a string
+                                      String formattedTime =
+                                          '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')} $period';
+                                      // Update the text field with the selected time
+                                      startTime.text = formattedTime;
+                                      // ignore: avoid_print
+                                      print(startTime.text);
+                                    });
+                                  }
+                                });
+                              },
+                              child: Container(
                                 padding: const EdgeInsets.only(
                                   left: 10,
                                   right: 10,
@@ -863,16 +747,14 @@ class _ActivityEditsState extends State<ActivityEdits> {
                                       flex: 6,
                                       child: TextFormField(
                                         autofocus: false,
-                                        keyboardType: const TextInputType
-                                            .numberWithOptions(),
-                                        inputFormatters: <TextInputFormatter>[
-                                          FilteringTextInputFormatter.allow(
-                                              RegExp(r'[0-9]')),
-                                        ],
+                                        readOnly: true,
+                                        keyboardType: TextInputType.text,
+                                        textCapitalization:
+                                            TextCapitalization.sentences,
                                         style: textStyle,
                                         decoration: InputDecoration(
                                           hintText:
-                                              "Enter your duration plan (in a minutes)",
+                                              "When do you want to start?",
                                           hintStyle: textStyleGrey,
                                         ),
                                         validator: (v) {
@@ -882,25 +764,133 @@ class _ActivityEditsState extends State<ActivityEdits> {
                                             return null;
                                           }
                                         },
-                                        controller: duration,
-                                        onChanged: (v) {},
+                                        controller: startTime,
                                       ),
                                     ),
                                     const SizedBox(
-                                      height: 5,
+                                      width: 5,
                                     ),
                                     const Expanded(
                                       flex: 2,
                                       child: Icon(
-                                        Icons.timer_outlined,
+                                        Icons.access_time,
                                         color: Colors.grey,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(
+                        width: 5,
+                      ),
+                      // Duration
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: Text(
+                                    "Duration",
+                                    style: subHeaderStyleGrey,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 5,
+                                ),
+                                //Tambah informasi (input in a minute)
+                                Expanded(
+                                  flex: 2,
+                                  child: Tooltip(
+                                    key: _tooltipDuration,
+                                    margin: const EdgeInsets.only(
+                                      left: 80,
+                                      right: 20,
+                                    ),
+                                    message:
+                                        "Please enter the duration in minutes (E.g. input '13' means for 13 minutes)",
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        final dynamic tooltip =
+                                            _tooltipDuration.currentState;
+                                        tooltip.ensureTooltipVisible();
+                                      },
+                                      child: const Icon(
+                                        Icons.info,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.only(
+                                left: 10,
+                                right: 10,
+                              ),
+                              alignment: Alignment.centerLeft,
+                              height: 40,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.grey,
+                                  width: 1.0,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 6,
+                                    child: TextFormField(
+                                      autofocus: false,
+                                      keyboardType: const TextInputType
+                                          .numberWithOptions(),
+                                      inputFormatters: <TextInputFormatter>[
+                                        FilteringTextInputFormatter.allow(
+                                            RegExp(r'[0-9]')),
+                                      ],
+                                      style: textStyle,
+                                      decoration: InputDecoration(
+                                        hintText:
+                                            "Enter your duration plan (in a minutes)",
+                                        hintStyle: textStyleGrey,
+                                      ),
+                                      validator: (v) {
+                                        if (v == null || v.isEmpty) {
+                                          return 'Opps, You need to fill this';
+                                        } else {
+                                          return null;
+                                        }
+                                      },
+                                      controller: duration,
+                                      onChanged: (v) {},
+                                    ),
+                                  ),
+                                  const SizedBox(
+                                    height: 5,
+                                  ),
+                                  const Expanded(
+                                    flex: 2,
+                                    child: Icon(
+                                      Icons.timer_outlined,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -964,161 +954,157 @@ class _ActivityEditsState extends State<ActivityEdits> {
                     child: Column(
                       children: [
                         // Tasks Input
-                        Container(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex: 6,
-                                    child: Text(
-                                      "Tasks",
-                                      style: subHeaderStyleGrey,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: Text(
+                                    "Tasks",
+                                    style: subHeaderStyleGrey,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 5,
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Tooltip(
+                                    key: _tooltipTasks,
+                                    margin: const EdgeInsets.only(
+                                      left: 40,
+                                      right: 20,
                                     ),
-                                  ),
-                                  const SizedBox(
-                                    width: 5,
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Tooltip(
-                                      key: _tooltipTasks,
-                                      margin: const EdgeInsets.only(
-                                        left: 40,
-                                        right: 20,
-                                      ),
-                                      message:
-                                          "If you want to enter more than one task. please use the comma (,) separator (E.g. buying eggs, breaking eggs)",
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          final dynamic tooltip =
-                                              _tooltipTasks.currentState;
-                                          tooltip.ensureTooltipVisible();
-                                        },
-                                        child: const Icon(
-                                          Icons.info,
-                                          color: Colors.black,
-                                        ),
+                                    message:
+                                        "If you want to enter more than one task. please use the comma (,) separator (E.g. buying eggs, breaking eggs)",
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        final dynamic tooltip =
+                                            _tooltipTasks.currentState;
+                                        tooltip.ensureTooltipVisible();
+                                      },
+                                      child: const Icon(
+                                        Icons.info,
+                                        color: Colors.black,
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 5,
-                              ),
-                              Container(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
                                 ),
-                                alignment: Alignment.centerLeft,
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: Colors.grey,
-                                    width: 1.0,
-                                  ),
-                                ),
-                                child: TextFormField(
-                                  autofocus: false,
-                                  keyboardType: TextInputType.text,
-                                  textCapitalization:
-                                      TextCapitalization.sentences,
-                                  style: textStyle,
-                                  decoration: InputDecoration(
-                                    hintText: "Enter your tasks if you have",
-                                    hintStyle: textStyleGrey,
-                                  ),
-                                  controller: tasks,
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.only(
+                                left: 10,
+                                right: 10,
+                              ),
+                              alignment: Alignment.centerLeft,
+                              height: 40,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Colors.grey,
+                                  width: 1.0,
                                 ),
                               ),
-                            ],
-                          ),
+                              child: TextFormField(
+                                autofocus: false,
+                                keyboardType: TextInputType.text,
+                                textCapitalization:
+                                    TextCapitalization.sentences,
+                                style: textStyle,
+                                decoration: InputDecoration(
+                                  hintText: "Enter your tasks if you have",
+                                  hintStyle: textStyleGrey,
+                                ),
+                                controller: tasks,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(
                           height: 5,
                         ),
                         // Combo Category
-                        Container(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex: 6,
-                                    child: Text(
-                                      "Category",
-                                      style: subHeaderStyleGrey,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: Text(
+                                    "Category",
+                                    style: subHeaderStyleGrey,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 5,
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Tooltip(
+                                    key: _tooltipCategory,
+                                    margin: const EdgeInsets.only(
+                                      left: 80,
+                                      right: 20,
                                     ),
-                                  ),
-                                  const SizedBox(
-                                    width: 5,
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Tooltip(
-                                      key: _tooltipCategory,
-                                      margin: const EdgeInsets.only(
-                                        left: 80,
-                                        right: 20,
-                                      ),
-                                      message:
-                                          "Please enter your activity into the category you want (E.g. Sprots or College Activities)",
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          final dynamic tooltip =
-                                              _tooltipCategory.currentState;
-                                          tooltip.ensureTooltipVisible();
-                                        },
-                                        child: const Icon(
-                                          Icons.info,
-                                          color: Colors.black,
-                                        ),
+                                    message:
+                                        "Please enter your activity into the category you want (E.g. Sprots or College Activities)",
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        final dynamic tooltip =
+                                            _tooltipCategory.currentState;
+                                        tooltip.ensureTooltipVisible();
+                                      },
+                                      child: const Icon(
+                                        Icons.info,
+                                        color: Colors.black,
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 5,
-                              ),
-                              Container(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
                                 ),
-                                alignment: Alignment.centerLeft,
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey,
-                                    width: 1.0,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: DropdownButton(
-                                  isExpanded: true,
-                                  value: category,
-                                  hint: Text(
-                                    "Choose any category that fit to your activity",
-                                    style: textStyleGrey,
-                                  ),
-                                  items: dropdownCat,
-                                  onChanged: (v) {
-                                    setState(() {
-                                      category = v;
-                                    });
-                                  },
-                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.only(
+                                left: 10,
+                                right: 10,
                               ),
-                            ],
-                          ),
+                              alignment: Alignment.centerLeft,
+                              height: 40,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.grey,
+                                  width: 1.0,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: DropdownButton(
+                                isExpanded: true,
+                                value: category,
+                                hint: Text(
+                                  "Choose any category that fit to your activity",
+                                  style: textStyleGrey,
+                                ),
+                                items: dropdownCat,
+                                onChanged: (v) {
+                                  setState(() {
+                                    category = v;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(
                           height: 5,
@@ -1193,7 +1179,7 @@ class _ActivityEditsState extends State<ActivityEdits> {
                                       context: context,
                                       builder: (BuildContext context) {
                                         return AlertDialog(
-                                          title: Text('Pick a color'),
+                                          title: const Text('Pick a color'),
                                           content: SingleChildScrollView(
                                             child: ColorPicker(
                                               color: currentColorCategory,
@@ -1209,7 +1195,7 @@ class _ActivityEditsState extends State<ActivityEdits> {
                                                 'Select color',
                                                 style: Theme.of(context)
                                                     .textTheme
-                                                    .headline5,
+                                                    .headlineSmall,
                                               ),
                                               pickersEnabled: const <ColorPickerType,
                                                   bool>{
@@ -1235,16 +1221,15 @@ class _ActivityEditsState extends State<ActivityEdits> {
                                       },
                                     );
 
-                                    if (selectedColor != null) {
-                                      setState(() =>
-                                          currentColorCategory = selectedColor);
-                                      String argbCode = ColorTools.colorCode(
-                                        currentColorCategory,
-                                      );
-                                      colorToARGBCategory(argbCode);
-                                      print(
-                                          'ARGB Code: (${colorA.text}, ${colorR.text}, ${colorG.text}, ${colorB.text})');
-                                    }
+                                    setState(() =>
+                                        currentColorCategory = selectedColor);
+                                    String argbCode = ColorTools.colorCode(
+                                      currentColorCategory,
+                                    );
+                                    colorToARGBCategory(argbCode);
+                                    // ignore: avoid_print
+                                    print(
+                                        'ARGB Code: (${colorA.text}, ${colorR.text}, ${colorG.text}, ${colorB.text})');
                                   },
                                   child: Container(
                                     width: 30,
@@ -1262,81 +1247,77 @@ class _ActivityEditsState extends State<ActivityEdits> {
                               ),
                               Expanded(
                                 flex: 8,
-                                child: Container(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Category",
-                                        style: subHeaderStyleGrey,
-                                      ),
-                                      const SizedBox(
-                                        height: 5,
-                                      ),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            flex: 6,
-                                            child: Container(
-                                              padding: const EdgeInsets.only(
-                                                left: 10,
-                                                right: 10,
-                                              ),
-                                              alignment: Alignment.centerLeft,
-                                              height: 40,
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                                border: Border.all(
-                                                  color: Colors.grey,
-                                                  width: 1.0,
-                                                ),
-                                              ),
-                                              child: TextFormField(
-                                                autofocus: false,
-                                                keyboardType:
-                                                    TextInputType.text,
-                                                textCapitalization:
-                                                    TextCapitalization
-                                                        .sentences,
-                                                style: textStyle,
-                                                decoration: InputDecoration(
-                                                  hintText:
-                                                      "Enter your new category (eg: sports, studies, etc)",
-                                                  hintStyle: textStyleGrey,
-                                                ),
-                                                controller: newCat,
-                                                onChanged: (v) {
-                                                  print(newCat.text);
-                                                },
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Category",
+                                      style: subHeaderStyleGrey,
+                                    ),
+                                    const SizedBox(
+                                      height: 5,
+                                    ),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 6,
+                                          child: Container(
+                                            padding: const EdgeInsets.only(
+                                              left: 10,
+                                              right: 10,
+                                            ),
+                                            alignment: Alignment.centerLeft,
+                                            height: 40,
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              border: Border.all(
+                                                color: Colors.grey,
+                                                width: 1.0,
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(
-                                            width: 5,
-                                          ),
-                                          Expanded(
-                                            flex: 2,
-                                            child: MyButtonWhite(
-                                              label: "Add",
-                                              onTap: () {
-                                                if (newCat.text == "") {
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(const SnackBar(
-                                                          content: Text(
-                                                              'Please fill the category name :)')));
-                                                } else {
-                                                  // addNewCategory();
-                                                  newCat.clear;
-                                                }
+                                            child: TextFormField(
+                                              autofocus: false,
+                                              keyboardType: TextInputType.text,
+                                              textCapitalization:
+                                                  TextCapitalization.sentences,
+                                              style: textStyle,
+                                              decoration: InputDecoration(
+                                                hintText:
+                                                    "Enter your new category (eg: sports, studies, etc)",
+                                                hintStyle: textStyleGrey,
+                                              ),
+                                              controller: newCat,
+                                              onChanged: (v) {
+                                                // ignore: avoid_print
+                                                print(newCat.text);
                                               },
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
+                                        ),
+                                        const SizedBox(
+                                          width: 5,
+                                        ),
+                                        Expanded(
+                                          flex: 2,
+                                          child: MyButtonWhite(
+                                            label: "Add",
+                                            onTap: () {
+                                              if (newCat.text == "") {
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(const SnackBar(
+                                                        content: Text(
+                                                            'Please fill the category name :)')));
+                                              } else {
+                                                // addNewCategory();
+                                                newCat.clear;
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -1350,85 +1331,83 @@ class _ActivityEditsState extends State<ActivityEdits> {
                           children: [
                             // Repeat Frequency
                             Expanded(
-                              child: Container(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Repeat",
-                                      style: subHeaderStyleGrey,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Repeat",
+                                    style: subHeaderStyleGrey,
+                                  ),
+                                  const SizedBox(
+                                    height: 5,
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.only(
+                                      left: 10,
+                                      right: 10,
                                     ),
-                                    const SizedBox(
-                                      height: 5,
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.only(
-                                        left: 10,
-                                        right: 10,
+                                    alignment: Alignment.centerLeft,
+                                    height: 40,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: Colors.grey,
+                                        width: 1.0,
                                       ),
-                                      alignment: Alignment.centerLeft,
-                                      height: 40,
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: Colors.grey,
-                                          width: 1.0,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: DropdownButton(
+                                      isExpanded: true,
+                                      value: repeatFreq,
+                                      hint: Text(
+                                        "Choose one only",
+                                        style: textStyleGrey,
+                                      ),
+                                      items: [
+                                        DropdownMenuItem(
+                                          value: "Never",
+                                          child: Text(
+                                            "Never",
+                                            style: textStyle,
+                                          ),
                                         ),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: DropdownButton(
-                                        isExpanded: true,
-                                        value: repeatFreq,
-                                        hint: Text(
-                                          "Choose one only",
-                                          style: textStyleGrey,
+                                        DropdownMenuItem(
+                                          value: "Daily",
+                                          child: Text(
+                                            "Daily",
+                                            style: textStyle,
+                                          ),
                                         ),
-                                        items: [
-                                          DropdownMenuItem(
-                                            value: "Never",
-                                            child: Text(
-                                              "Never",
-                                              style: textStyle,
-                                            ),
+                                        DropdownMenuItem(
+                                          value: "Weekly",
+                                          child: Text(
+                                            "Weekly",
+                                            style: textStyle,
                                           ),
-                                          DropdownMenuItem(
-                                            value: "Daily",
-                                            child: Text(
-                                              "Daily",
-                                              style: textStyle,
-                                            ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: "Monthly",
+                                          child: Text(
+                                            "Monthly",
+                                            style: textStyle,
                                           ),
-                                          DropdownMenuItem(
-                                            value: "Weekly",
-                                            child: Text(
-                                              "Weekly",
-                                              style: textStyle,
-                                            ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: "Yearly",
+                                          child: Text(
+                                            "Yearly",
+                                            style: textStyle,
                                           ),
-                                          DropdownMenuItem(
-                                            value: "Monthly",
-                                            child: Text(
-                                              "Monthly",
-                                              style: textStyle,
-                                            ),
-                                          ),
-                                          DropdownMenuItem(
-                                            value: "Yearly",
-                                            child: Text(
-                                              "Yearly",
-                                              style: textStyle,
-                                            ),
-                                          ),
-                                        ],
-                                        onChanged: (v) {
-                                          setState(() {
-                                            repeatFreq = v;
-                                          });
-                                        },
-                                      ),
+                                        ),
+                                      ],
+                                      onChanged: (v) {
+                                        setState(() {
+                                          repeatFreq = v;
+                                        });
+                                      },
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(
@@ -1436,99 +1415,97 @@ class _ActivityEditsState extends State<ActivityEdits> {
                             ),
                             // Duration Frequent
                             Expanded(
-                              child: Container(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          flex: 6,
-                                          child: Text(
-                                            "Rep Duration",
-                                            style: subHeaderStyleGrey,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 6,
+                                        child: Text(
+                                          "Rep Duration",
+                                          style: subHeaderStyleGrey,
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        width: 5,
+                                      ),
+                                      //Tambah informasi (How many times do you want to repeat it?)
+                                      Expanded(
+                                        flex: 2,
+                                        child: Tooltip(
+                                          key: _tooltipRepDuration,
+                                          margin: const EdgeInsets.only(
+                                            left: 80,
+                                            right: 20,
                                           ),
-                                        ),
-                                        const SizedBox(
-                                          width: 5,
-                                        ),
-                                        //Tambah informasi (How many times do you want to repeat it?)
-                                        Expanded(
-                                          flex: 2,
-                                          child: Tooltip(
-                                            key: _tooltipRepDuration,
-                                            margin: const EdgeInsets.only(
-                                              left: 80,
-                                              right: 20,
-                                            ),
-                                            message:
-                                                "Please enter the duration of repetition (E.g. Your repetition is daily and the duration is 2, then your activity will be repeated 2 days in a row)",
-                                            child: GestureDetector(
-                                              onTap: () {
-                                                final dynamic tooltip =
-                                                    _tooltipRepDuration
-                                                        .currentState;
-                                                tooltip.ensureTooltipVisible();
-                                              },
-                                              child: const Icon(
-                                                Icons.info,
-                                                color: Colors.black,
-                                              ),
+                                          message:
+                                              "Please enter the duration of repetition (E.g. Your repetition is daily and the duration is 2, then your activity will be repeated 2 days in a row)",
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              final dynamic tooltip =
+                                                  _tooltipRepDuration
+                                                      .currentState;
+                                              tooltip.ensureTooltipVisible();
+                                            },
+                                            child: const Icon(
+                                              Icons.info,
+                                              color: Colors.black,
                                             ),
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(
-                                      height: 5,
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.only(
-                                        left: 10,
-                                        right: 10,
                                       ),
-                                      alignment: Alignment.centerLeft,
-                                      height: 40,
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: Colors.grey,
-                                          width: 1.0,
-                                        ),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: TextFormField(
-                                        autofocus: false,
-                                        enabled: repeatFreq == "Never"
-                                            ? false
-                                            : true,
-                                        keyboardType:
-                                            TextInputType.numberWithOptions(),
-                                        // textCapitalization: TextCapitalization.sentences,
-                                        style: textStyle,
-                                        decoration: InputDecoration(
-                                          hintText:
-                                              "How long do you want to repeat it?",
-                                          hintStyle: textStyleGrey,
-                                        ),
-                                        controller: repeatDur,
-                                        onFieldSubmitted: (v) {
-                                          setState(() {
-                                            print(repeatDur.text);
-                                          });
-                                        },
-                                        validator: (v) {
-                                          if (repeatDur != "Never" &&
-                                              v == null) {
-                                            return 'Opps, You need to fill this';
-                                          } else {
-                                            return null;
-                                          }
-                                        },
-                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(
+                                    height: 5,
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.only(
+                                      left: 10,
+                                      right: 10,
                                     ),
-                                  ],
-                                ),
+                                    alignment: Alignment.centerLeft,
+                                    height: 40,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: Colors.grey,
+                                        width: 1.0,
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: TextFormField(
+                                      autofocus: false,
+                                      enabled:
+                                          repeatFreq == "Never" ? false : true,
+                                      keyboardType: const TextInputType
+                                          .numberWithOptions(),
+                                      // textCapitalization: TextCapitalization.sentences,
+                                      style: textStyle,
+                                      decoration: InputDecoration(
+                                        hintText:
+                                            "How long do you want to repeat it?",
+                                        hintStyle: textStyleGrey,
+                                      ),
+                                      controller: repeatDur,
+                                      onFieldSubmitted: (v) {
+                                        setState(() {
+                                          // ignore: avoid_print
+                                          print(repeatDur.text);
+                                        });
+                                      },
+                                      validator: (v) {
+                                        // ignore: unrelated_type_equality_checks
+                                        if (repeatDur != "Never" && v == null) {
+                                          return 'Opps, You need to fill this';
+                                        } else {
+                                          return null;
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -1537,199 +1514,192 @@ class _ActivityEditsState extends State<ActivityEdits> {
                           height: 5,
                         ),
                         // Notification
-                        Container(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex: 6,
-                                    child: Text(
-                                      "Notification",
-                                      style: subHeaderStyleGrey,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: Text(
+                                    "Notification",
+                                    style: subHeaderStyleGrey,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 5,
+                                ),
+                                //Tambah informasi (How many times do you want to repeat it?)
+                                Expanded(
+                                  flex: 2,
+                                  child: Tooltip(
+                                    key: _tooltipNotif,
+                                    margin: const EdgeInsets.only(
+                                      left: 80,
+                                      right: 20,
                                     ),
-                                  ),
-                                  const SizedBox(
-                                    width: 5,
-                                  ),
-                                  //Tambah informasi (How many times do you want to repeat it?)
-                                  Expanded(
-                                    flex: 2,
-                                    child: Tooltip(
-                                      key: _tooltipNotif,
-                                      margin: const EdgeInsets.only(
-                                        left: 80,
-                                        right: 20,
-                                      ),
-                                      message:
-                                          "Please set notification time in a MINUTE before activity and if you want to enter more than one notification, please use the dot (.) separator (E.g: 60. 120)",
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          final dynamic tooltip =
-                                              _tooltipNotif.currentState;
-                                          tooltip.ensureTooltipVisible();
-                                        },
-                                        child: const Icon(
-                                          Icons.info,
-                                          color: Colors.black,
-                                        ),
+                                    message:
+                                        "Please set notification time in a MINUTE before activity and if you want to enter more than one notification, please use the dot (.) separator (E.g: 60. 120)",
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        final dynamic tooltip =
+                                            _tooltipNotif.currentState;
+                                        tooltip.ensureTooltipVisible();
+                                      },
+                                      child: const Icon(
+                                        Icons.info,
+                                        color: Colors.black,
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 5,
-                              ),
-                              Container(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
                                 ),
-                                alignment: Alignment.centerLeft,
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: Colors.grey,
-                                    width: 1.0,
-                                  ),
-                                ),
-                                child: TextFormField(
-                                  autofocus: false,
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                          decimal: true),
-                                  style: textStyle,
-                                  decoration: InputDecoration(
-                                    hintText:
-                                        "Set time notification in a minutes",
-                                    hintStyle: textStyleGrey,
-                                  ),
-                                  controller: notification,
-                                  onChanged: (value) {
-                                    // addNotification(value);
-                                  },
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.only(
+                                left: 10,
+                                right: 10,
+                              ),
+                              alignment: Alignment.centerLeft,
+                              height: 40,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Colors.grey,
+                                  width: 1.0,
                                 ),
                               ),
-                            ],
-                          ),
+                              child: TextFormField(
+                                autofocus: false,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                style: textStyle,
+                                decoration: InputDecoration(
+                                  hintText:
+                                      "Set time notification in a minutes",
+                                  hintStyle: textStyleGrey,
+                                ),
+                                controller: notification,
+                                onChanged: (value) {
+                                  // addNotification(value);
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(
                           height: 5,
                         ),
                         // Activity Location
-                        Container(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex: 6,
-                                    child: Text(
-                                      "Locations",
-                                      style: subHeaderStyleGrey,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    width: 5,
-                                  ),
-                                  //Tambah informasi (How many times do you want to repeat it?)
-                                  Expanded(
-                                    flex: 2,
-                                    child: Tooltip(
-                                      key: _tooltipLoc,
-                                      margin: const EdgeInsets.only(
-                                        left: 40,
-                                        right: 20,
-                                      ),
-                                      message:
-                                          "Please enter the location you want to add for",
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          final dynamic tooltip =
-                                              _tooltipLoc.currentState;
-                                          tooltip.ensureTooltipVisible();
-                                        },
-                                        child: const Icon(
-                                          Icons.info,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 5,
-                              ),
-                              Container(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                ),
-                                alignment: Alignment.center,
-                                width: double.infinity,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey,
-                                    width: 1.0,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                  color: Colors.grey[300],
-                                ),
-                                child: GestureDetector(
-                                  onTap: () async {
-                                    geoPoint =
-                                        await osm.showSimplePickerLocation(
-                                      context: context,
-                                      isDismissible: true,
-                                      title: 'Add a activity location',
-                                      textConfirmPicker: "Add",
-                                      initPosition: osm.GeoPoint(
-                                        latitude: -7.3225653,
-                                        longitude: 112.7678477,
-                                      ),
-                                      // initCurrentUserPosition: true,
-                                      zoomOption: const osm.ZoomOption(
-                                        initZoom: 20,
-                                      ),
-                                    );
-
-                                    if (geoPoint != null) {
-                                      List<Placemark> placemarks =
-                                          await placemarkFromCoordinates(
-                                              geoPoint.latitude,
-                                              geoPoint.longitude);
-                                      if (placemarks != null &&
-                                          placemarks.isNotEmpty) {
-                                        Placemark placemark = placemarks[0];
-                                        setState(() {
-                                          latitude =
-                                              geoPoint.latitude.toString();
-                                          longitude =
-                                              geoPoint.longitude.toString();
-                                          address =
-                                              "${placemark.street}, ${placemark.locality}, ${placemark.administrativeArea}, ${placemark.country}";
-
-                                          addLocation(
-                                              address, latitude, longitude);
-                                        });
-                                      }
-                                    }
-                                  },
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 6,
                                   child: Text(
-                                    "Click here to add new location",
-                                    style: textStyle,
+                                    "Locations",
+                                    style: subHeaderStyleGrey,
                                   ),
                                 ),
+                                const SizedBox(
+                                  width: 5,
+                                ),
+                                //Tambah informasi (How many times do you want to repeat it?)
+                                Expanded(
+                                  flex: 2,
+                                  child: Tooltip(
+                                    key: _tooltipLoc,
+                                    margin: const EdgeInsets.only(
+                                      left: 40,
+                                      right: 20,
+                                    ),
+                                    message:
+                                        "Please enter the location you want to add for",
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        final dynamic tooltip =
+                                            _tooltipLoc.currentState;
+                                        tooltip.ensureTooltipVisible();
+                                      },
+                                      child: const Icon(
+                                        Icons.info,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.only(
+                                left: 10,
+                                right: 10,
                               ),
-                            ],
-                          ),
+                              alignment: Alignment.center,
+                              width: double.infinity,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.grey,
+                                  width: 1.0,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                color: Colors.grey[300],
+                              ),
+                              child: GestureDetector(
+                                onTap: () async {
+                                  geoPoint = await osm.showSimplePickerLocation(
+                                    context: context,
+                                    isDismissible: true,
+                                    title: 'Add a activity location',
+                                    textConfirmPicker: "Add",
+                                    initPosition: osm.GeoPoint(
+                                      latitude: -7.3225653,
+                                      longitude: 112.7678477,
+                                    ),
+                                    // initCurrentUserPosition: true,
+                                    zoomOption: const osm.ZoomOption(
+                                      initZoom: 20,
+                                    ),
+                                  );
+
+                                  if (geoPoint != null) {
+                                    List<Placemark> placemarks =
+                                        await placemarkFromCoordinates(
+                                            geoPoint.latitude,
+                                            geoPoint.longitude);
+                                    if (placemarks.isNotEmpty) {
+                                      Placemark placemark = placemarks[0];
+                                      setState(() {
+                                        latitude = geoPoint.latitude.toString();
+                                        longitude =
+                                            geoPoint.longitude.toString();
+                                        address =
+                                            "${placemark.street}, ${placemark.locality}, ${placemark.administrativeArea}, ${placemark.country}";
+
+                                        addLocation(
+                                            address, latitude, longitude);
+                                      });
+                                    }
+                                  }
+                                },
+                                child: Text(
+                                  "Click here to add new location",
+                                  style: textStyle,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         // List of Locations - Title (Hide n show)
                         GestureDetector(
@@ -1968,90 +1938,88 @@ class _ActivityEditsState extends State<ActivityEdits> {
                           height: 5,
                         ),
                         // Combo Timezone
-                        Container(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex: 6,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: Text(
+                                    "Timezone",
+                                    style: subHeaderStyleGrey,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 5,
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Tooltip(
+                                    key: _tooltipTimezone,
+                                    margin: const EdgeInsets.only(
+                                      left: 80,
+                                      right: 20,
+                                    ),
+                                    message:
+                                        "Please enter your activity timezone",
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        final dynamic tooltip =
+                                            _tooltipTimezone.currentState;
+                                        tooltip.ensureTooltipVisible();
+                                      },
+                                      child: const Icon(
+                                        Icons.info,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.only(
+                                left: 10,
+                                right: 10,
+                              ),
+                              alignment: Alignment.centerLeft,
+                              height: 40,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.grey,
+                                  width: 1.0,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: DropdownButton(
+                                isExpanded: true,
+                                value: timezoneName,
+                                hint: Text(
+                                  "Choose timezone for your activity",
+                                  style: textStyleGrey,
+                                ),
+                                items: timezone.map((time) {
+                                  return DropdownMenuItem(
+                                    value: time.name,
                                     child: Text(
-                                      "Timezone",
-                                      style: subHeaderStyleGrey,
+                                      time.name,
+                                      style: textStyle,
                                     ),
-                                  ),
-                                  const SizedBox(
-                                    width: 5,
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Tooltip(
-                                      key: _tooltipTimezone,
-                                      margin: const EdgeInsets.only(
-                                        left: 80,
-                                        right: 20,
-                                      ),
-                                      message:
-                                          "Please enter your activity timezone",
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          final dynamic tooltip =
-                                              _tooltipTimezone.currentState;
-                                          tooltip.ensureTooltipVisible();
-                                        },
-                                        child: const Icon(
-                                          Icons.info,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                  );
+                                }).toList(),
+                                onChanged: (v) {
+                                  setState(() {
+                                    timezoneName = v;
+                                  });
+                                },
                               ),
-                              const SizedBox(
-                                height: 5,
-                              ),
-                              Container(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                ),
-                                alignment: Alignment.centerLeft,
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey,
-                                    width: 1.0,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: DropdownButton(
-                                  isExpanded: true,
-                                  value: timezoneName,
-                                  hint: Text(
-                                    "Choose timezone for your activity",
-                                    style: textStyleGrey,
-                                  ),
-                                  items: timezone.map((time) {
-                                    return DropdownMenuItem(
-                                      value: time.name,
-                                      child: Text(
-                                        time.name,
-                                        style: textStyle,
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (v) {
-                                    setState(() {
-                                      timezoneName = v;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                         const SizedBox(
                           height: 5,

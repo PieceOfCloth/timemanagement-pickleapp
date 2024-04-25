@@ -1,16 +1,15 @@
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+// import 'package:flutter/rendering.dart';
 import 'package:pickleapp/theme.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:typed_data';
+// import 'dart:typed_data';
 import 'package:flutter/services.dart';
 
-import 'package:pickleapp/screen/components/buttonCalmBlue.dart';
+import 'package:pickleapp/screen/components/button_calm_blue.dart';
 
 class MySignUp extends StatefulWidget {
   const MySignUp({super.key});
@@ -67,8 +66,10 @@ class _MySignUpState extends State<MySignUp> {
         'path': defaultProfilePicUrl,
       });
 
+      // ignore: use_build_context_synchronously
       Navigator.of(context).pop();
 
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -83,6 +84,7 @@ class _MySignUpState extends State<MySignUp> {
         _rptPassword.clear();
       });
     } on FirebaseAuthException catch (e) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.code),
@@ -142,7 +144,6 @@ class _MySignUpState extends State<MySignUp> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     _path = "assets/Default_Photo_Profile.png";
     _createdAt = "${DateTime.now()}";
@@ -229,6 +230,7 @@ class _MySignUpState extends State<MySignUp> {
                                       ),
                                     );
                                   }
+                                  return null;
                                 },
                               ),
                             ),
@@ -367,6 +369,7 @@ class _MySignUpState extends State<MySignUp> {
                                   } else {
                                     return null;
                                   }
+                                  return null;
                                 },
                               ),
                             ),
@@ -442,6 +445,7 @@ class _MySignUpState extends State<MySignUp> {
                                   } else {
                                     return null;
                                   }
+                                  return null;
                                 },
                               ),
                             ),
@@ -471,6 +475,7 @@ class _MySignUpState extends State<MySignUp> {
                       if (_name.text.isEmpty) {
                         _name.text = "Pickle";
                       }
+                      // ignore: avoid_print
                       print(
                         "${_email.text}, ${_name.text}, ${_password.text}, ${_rptPassword.text},${_path},${_createdAt},${_updateAt}",
                       );

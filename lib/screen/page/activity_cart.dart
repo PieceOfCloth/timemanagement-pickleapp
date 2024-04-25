@@ -2,12 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:open_file/open_file.dart';
-import 'package:pickleapp/main.dart';
 import 'package:pickleapp/screen/class/file.dart';
 import 'package:pickleapp/screen/class/location.dart';
 import 'package:pickleapp/screen/class/notification.dart';
 import 'package:pickleapp/screen/class/task.dart';
-import 'package:pickleapp/screen/components/buttonCalmBlue.dart';
+import 'package:pickleapp/screen/components/button_calm_blue.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:logger/logger.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -212,7 +211,7 @@ class _ActivityCartState extends State<ActivityCart> {
         if (_isCheckedAlgorithm == false) {
           for (var i = 0; i < (act.rpt_dur ?? 1); i++) {
             DateTime startTime = DateFormat("yyyy-MM-dd hh:mm a")
-                .parse(act.date + " " + (act.str_time ?? "12:00 AM"));
+                .parse("${act.date} ${act.str_time ?? "12:00 AM"}");
             tz.Location timezone = tz.getLocation(act.timezone);
             startTime = tz.TZDateTime.from(startTime, timezone)
                 .add(Duration(
@@ -266,15 +265,18 @@ class _ActivityCartState extends State<ActivityCart> {
           }
         }
 
+        // ignore: use_build_context_synchronously
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Your activities successfuly scheduled'),
           ),
         );
 
+        // ignore: use_build_context_synchronously
         Navigator.popUntil(context, ModalRoute.withName('/'));
       }
     } catch (e) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),

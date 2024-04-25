@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 import 'package:pickleapp/screen/class/location.dart';
 
 class ActivityList {
@@ -45,7 +47,12 @@ class ActivityList {
       color_g: json['color_g'] as int,
       color_b: json['color_b'] as int,
       timezone: json['timezone'] as String,
-      locations: json['address'],
+      locations: json['locations'],
     );
+  }
+
+  @override
+  String toString() {
+    return 'ActivityList: {id_activity: $id_activity, id_scheduled: $id_scheduled, title: $title, start_time: $start_time, end_time: $end_time, important_type: $important_type, urgent_type: $urgent_type, color_a: $color_a, color_r: $color_r, color_g: $color_g, color_b: $color_b, timezone: $timezone, locations: $locations}';
   }
 }

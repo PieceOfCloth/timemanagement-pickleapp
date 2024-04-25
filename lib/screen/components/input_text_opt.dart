@@ -1,20 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:pickleapp/theme.dart';
 
-class MyInputTextMust extends StatelessWidget {
+// ignore: must_be_immutable
+class MyInputTextOpt extends StatefulWidget {
   final String title;
   final String placeholder;
-  TextEditingController? value;
+  TextEditingController? controller;
+  String value;
   final Widget? widget;
 
-  MyInputTextMust({
+  MyInputTextOpt({
     super.key,
     required this.title,
     required this.placeholder,
+    required this.controller,
     required this.value,
     this.widget,
   });
 
+  @override
+  State<MyInputTextOpt> createState() => _MyInputTextOptState();
+}
+
+class _MyInputTextOptState extends State<MyInputTextOpt> {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -22,7 +30,7 @@ class MyInputTextMust extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title,
+            widget.title,
             style: subHeaderStyleGrey,
           ),
           const SizedBox(
@@ -47,32 +55,27 @@ class MyInputTextMust extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextFormField(
-                    readOnly: widget == null ? false : true,
+                    readOnly: widget.widget == null ? false : true,
                     keyboardType: TextInputType.text,
                     textCapitalization: TextCapitalization.sentences,
                     autofocus: false,
                     style: textStyle,
                     decoration: InputDecoration(
-                      hintText: placeholder,
+                      hintText: widget.placeholder,
                       hintStyle: textStyleGrey,
                     ),
-                    controller: value,
-                    // onChanged: (v) {
-                    //   value = v;
-                    // },
-                    validator: (val) {
-                      if (val == null || val.isEmpty) {
-                        return 'You need to fill these input, please';
-                      } else {
-                        return null;
-                      }
+                    controller: widget.controller,
+                    onChanged: (v) {
+                      setState(() {
+                        widget.value = v;
+                      });
                     },
                   ),
                 ),
-                widget == null
+                widget.widget == null
                     ? Container()
                     : Container(
-                        child: widget,
+                        child: widget.widget,
                       ),
               ],
             ),

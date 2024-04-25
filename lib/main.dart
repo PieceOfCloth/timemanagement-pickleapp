@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:pickleapp/auth.dart';
-import 'package:pickleapp/screen/page/detailActivity.dart';
-import 'package:pickleapp/screen/page/editProfile.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -16,10 +13,8 @@ import 'screen/page/timer.dart';
 import 'screen/page/pickle.dart';
 import 'screen/page/report.dart';
 import 'screen/page/profile.dart';
-import 'screen/page/signIn.dart';
-import 'screen/page/timezones.dart';
 
-String active_user = "admin@gmail.com";
+String activeUser = "admin@gmail.com";
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,12 +55,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Sizer(
       builder: (context, orientation, deviceType) {
-        return MaterialApp(
+        return const MaterialApp(
           // title: 'Flutter Demo',
-          theme: ThemeData(
-            scaffoldBackgroundColor: const Color.fromARGB(255, 240, 240, 240),
-          ),
-          home: const Authentication(),
+          // theme: ThemeData(
+          //   scaffoldBackgroundColor: const Color.fromARGB(255, 240, 240, 240),
+          // ),
+          home: Authentication(),
           debugShowCheckedModeBanner: false,
 
           // Bisa dipakai jika mau pakai sidebar
@@ -78,8 +73,6 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-String userID = "";
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({
@@ -101,11 +94,11 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _currentIndex = 0;
-  String active_user = "";
+  // String active_user = "";
 
   // List halaman yang akan muncul di navbar, harus urut
   final List<Widget> _pages = [
-    Home(),
+    const Home(),
     Timers(),
     Pickle(),
     Report(),
@@ -122,35 +115,36 @@ class _MyHomePageState extends State<MyHomePage> {
   // ];
 
   Container myBottomNavBar() {
+    // ignore: sized_box_for_whitespace
     return Container(
       width: double.infinity,
       child: CurvedNavigationBar(
         index: _currentIndex,
-        backgroundColor: Color.fromARGB(255, 240, 240, 240),
-        buttonBackgroundColor: Color.fromARGB(255, 166, 204, 255),
-        color: Color.fromARGB(255, 166, 204, 255),
+        backgroundColor: Colors.white,
+        buttonBackgroundColor: const Color.fromARGB(255, 3, 0, 66),
+        color: const Color.fromARGB(255, 3, 0, 66),
 
         // List halaman untuk navbar dengan index 0 = home, dst
         items: const <Widget>[
           Icon(
             Icons.home_filled,
-            color: Colors.black,
+            color: Color.fromARGB(255, 255, 170, 0),
           ),
           Icon(
             Icons.timelapse_rounded,
-            color: Colors.black,
+            color: Color.fromARGB(255, 255, 170, 0),
           ),
           Icon(
             Icons.library_books_rounded,
-            color: Colors.black,
+            color: Color.fromARGB(255, 255, 170, 0),
           ),
           Icon(
             Icons.timeline_rounded,
-            color: Colors.black,
+            color: Color.fromARGB(255, 255, 170, 0),
           ),
           Icon(
             Icons.person_2_rounded,
-            color: Colors.black,
+            color: Color.fromARGB(255, 255, 170, 0),
           ),
         ],
 

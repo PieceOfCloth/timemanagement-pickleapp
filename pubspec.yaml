@@ -42,6 +42,8 @@ dependencies:
   date_picker_timeline: any
   # Curved Bottom Nav Bar
   curved_navigation_bar: any
+
+  numberpicker: any
   
   provider: any
   # Store simple data

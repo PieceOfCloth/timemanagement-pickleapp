@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:pickleapp/main.dart';
-import 'package:pickleapp/screen/page/forgotPassword.dart';
-import 'package:pickleapp/screen/page/signUp.dart';
+import 'package:pickleapp/screen/page/forgot_password.dart';
+import 'package:pickleapp/screen/page/sign_up.dart';
 import 'package:pickleapp/theme.dart';
-import 'package:pickleapp/screen/components/buttonCalmBlue.dart';
-import 'package:pickleapp/screen/components/buttonWhite.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pickleapp/screen/components/button_calm_blue.dart';
+import 'package:pickleapp/screen/components/button_white.dart';
 
 class MySignIn extends StatefulWidget {
   const MySignIn({super.key});

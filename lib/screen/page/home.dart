@@ -1,27 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 import 'package:intl/intl.dart';
 import 'package:date_picker_timeline/date_picker_timeline.dart';
-import 'package:pickleapp/main.dart';
-import 'package:http/http.dart' as http;
 import 'package:pickleapp/screen/class/location.dart';
-import 'package:pickleapp/screen/page/detailActivity.dart';
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pickleapp/screen/page/detail_activity.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:pickleapp/theme.dart';
-import 'package:pickleapp/screen/class/activityList.dart';
+import 'package:pickleapp/screen/class/activity_list.dart';
 import 'package:pickleapp/screen/fabexpandable/add_activities.dart';
 import 'package:pickleapp/screen/fabexpandable/edit_activities.dart';
 import 'package:pickleapp/screen/fabexpandable/delete_activities.dart';
-import 'package:pickleapp/screen/page/profile.dart';
+import 'package:pickleapp/auth.dart';
 
 final scaffoldKey = GlobalKey<ScaffoldMessengerState>();
 
 class Home extends StatefulWidget {
+  const Home({super.key});
+
   @override
   _HomeState createState() => _HomeState();
 }
@@ -35,9 +32,9 @@ class _HomeState extends State<Home> {
   String message = "";
   String scheduledID = "";
 
-  List<ActivityList> ALs = [];
   List<ActivityList> actList = [];
-  ActivityList? ALs2;
+  ActivityList? aLS2;
+  late Future<List<ActivityList>> activityListFuture;
   Timer? _timer;
 
   @override
@@ -83,211 +80,234 @@ class _HomeState extends State<Home> {
   }
 
   // Get priority color based on important und urgent level
-  Color getPriorityColor(important, urgent) {
-    if (important == "Important" && urgent == "Urgent") {
-      return Colors.red[600] ?? Colors.red;
-    } else if (important == "Important" && urgent == "Not Urgent") {
-      return Colors.yellow[600] ?? Colors.yellow;
-    } else if (important == "Not Important" && urgent == "Urgent") {
-      return Colors.green[600] ?? Colors.green;
-    } else {
-      return Colors.blue[600] ?? Colors.blue;
-    }
-  }
+  // Color getPriorityColor(important, urgent) {
+  //   if (important == "Important" && urgent == "Urgent") {
+  //     return Colors.red[600] ?? Colors.red;
+  //   } else if (important == "Important" && urgent == "Not Urgent") {
+  //     return Colors.yellow[600] ?? Colors.yellow;
+  //   } else if (important == "Not Important" && urgent == "Urgent") {
+  //     return Colors.green[600] ?? Colors.green;
+  //   } else {
+  //     return Colors.blue[600] ?? Colors.blue;
+  //   }
+  // }
 
-  // Update only current activity to show
-  void updateCurrentActivity() {
-    DateTime now = DateTime.now();
-    String currentTime = now.toString();
-
-    for (var act in ALs) {
-      if (currentTime.compareTo(act.start_time) >= 0 &&
-          currentTime.compareTo(act.end_time) < 0) {
-        setState(() {
-          scheduledID = act.id_scheduled;
-        });
-        break;
-      }
-    }
-  }
-
-  // Get data current activity from database
-  Future<String> fetchCurrentDataActivity() async {
-    final response2 = await http.post(
-        Uri.parse("http://192.168.1.12:8012/picklePHP/currentActivity.php"),
-        body: {
-          'email': active_user,
-          'start_time': '%${_selectedDate}%',
-          'sch_id': scheduledID.toString(),
-        });
-    if (response2.statusCode == 200) {
-      return response2.body;
-    } else {
-      throw Exception('Failed to read API');
-    }
-  }
-
-  // Convert it from JSON to list of ActivityList
-  bacaDataCurrent() {
-    fetchCurrentDataActivity().then((v) {
-      Map json2 = jsonDecode(v);
-      ALs2 = ActivityList.fromJson(json2['dataActivity']);
-      setState(() {});
-    });
-  }
-
+  // // Update only current activity to show
+  // void updateCurrentActivity() {
+  //   DateTime now = DateTime.now();
+  //   String currentTime = now.toString();
+  //   for (var act in ALs) {
+  //     if (currentTime.compareTo(act.start_time) >= 0 &&
+  //         currentTime.compareTo(act.end_time) < 0) {
+  //       setState(() {
+  //         scheduledID = act.id_scheduled;
+  //       });
+  //       break;
+  //     }
+  //   }
+  // }
+  // // Get data current activity from database
+  // Future<String> fetchCurrentDataActivity() async {
+  //   final response2 = await http.post(
+  //       Uri.parse("http://192.168.1.12:8012/picklePHP/currentActivity.php"),
+  //       body: {
+  //         'email': active_user,
+  //         'start_time': '%${_selectedDate}%',
+  //         'sch_id': scheduledID.toString(),
+  //       });
+  //   if (response2.statusCode == 200) {
+  //     return response2.body;
+  //   } else {
+  //     throw Exception('Failed to read API');
+  //   }
+  // }
+  // // Convert it from JSON to list of ActivityList
+  // bacaDataCurrent() {
+  //   fetchCurrentDataActivity().then((v) {
+  //     Map json2 = jsonDecode(v);
+  //     aLS2 = ActivityList.fromJson(json2['dataActivity']);
+  //     setState(() {});
+  //   });
+  // }
   // Get data from database
-  Future<String> fetchData() async {
-    final response = await http.post(
-      Uri.parse("http://192.168.1.12:8012/picklePHP/activityList.php"),
-      body: {
-        'email': active_user,
-        'start_time': '%${_selectedDate}%',
-      }, // Untuk mengirim data (form) yang akan dibaca di PHP dengan $_POST
-    );
-    if (response.statusCode == 200) {
-      return response.body;
-    } else {
-      throw Exception('Failed to read API');
-    }
-  }
-
+  // Future<String> fetchData() async {
+  //   final response = await http.post(
+  //     Uri.parse("http://192.168.1.12:8012/picklePHP/activityList.php"),
+  //     body: {
+  //       'email': active_user,
+  //       'start_time': '%${_selectedDate}%',
+  //     }, // Untuk mengirim data (form) yang akan dibaca di PHP dengan $_POST
+  //   );
+  //   if (response.statusCode == 200) {
+  //     return response.body;
+  //   } else {
+  //     throw Exception('Failed to read API');
+  //   }
+  // }
   // Convert it from JSON to list of ActivityList
-  bacaData() {
-    ALs.clear();
-    Future<String> dataActivity = fetchData();
-    dataActivity.then((value) {
-      setState(() {
-        Map json = jsonDecode(value);
-        if (json['dataActivity'] != null || json['dataActivity'].length > 0) {
-          for (var activity in json['dataActivity']) {
-            ActivityList al = ActivityList.fromJson(activity);
-            ALs.add(al);
-          }
-        }
-      });
-    });
-  }
+  // bacaData() {
+  //   ALs.clear();
+  //   Future<String> dataActivity = fetchData();
+  //   dataActivity.then((value) {
+  //     setState(() {
+  //       Map json = jsonDecode(value);
+  //       if (json['dataActivity'] != null || json['dataActivity'].length > 0) {
+  //         for (var activity in json['dataActivity']) {
+  //           ActivityList al = ActivityList.fromJson(activity);
+  //           ALs.add(al);
+  //         }
+  //       }
+  //     });
+  //   });
+  // }
+  // // Current Locations Activity
+  // Widget formattedCurrentLocations() {
+  //   if (aLS2?.locations?.isEmpty ?? true) {
+  //     // List is empty
+  //     return const Text("Wherever you want :)");
+  //   } else {
+  //     //List is not empty
+  //     return Column(
+  //       children: (aLS2?.locations ?? [])
+  //           .map(
+  //             (location) {
+  //               return Text(
+  //                 "- ${location.address}",
+  //                 style: textStyleGrey,
+  //               );
+  //             },
+  //           )
+  //           .whereType<Widget>()
+  //           .toList(),
+  //     );
+  //   }
+  // }
 
-  //Current Locations Activity
-  Widget formattedCurrentLocations() {
-    if (ALs2?.locations?.isEmpty ?? true) {
-      // List is empty
-      return const Text("Wherever you want :)");
-    } else {
-      //List is not empty
-      return Column(
-        children: (ALs2?.locations ?? [])
-            .map(
-              (location) {
-                return Text(
-                  "- ${location.address}",
-                  style: textStyleGrey,
-                );
-              },
-            )
-            .whereType<Widget>()
-            .toList(),
-      );
-    }
-  }
+  Future<List<ActivityList>> getActivityList() async {
+    List<ActivityList> activitiesList = [];
 
-  Future<void> getActivityList() async {
-    try {
-      QuerySnapshot actSnap = await FirebaseFirestore.instance
-          .collection('activities')
-          .where('user_id', isEqualTo: userID)
-          .get();
+    // Convert date string to DateTime and then to Timestamp
+    DateTime dateTime = DateTime.parse(_selectedDate);
+    Timestamp startOfDay = Timestamp.fromDate(dateTime);
+    Timestamp endOfDay =
+        Timestamp.fromDate(dateTime.add(const Duration(days: 1)));
 
-      for (QueryDocumentSnapshot activity in actSnap.docs) {
-        QuerySnapshot schSnap = await FirebaseFirestore.instance
-            .collection('scheduled_activities')
-            .where('activities_id', isEqualTo: activity.id)
-            .where('actual_start_time',
-                isEqualTo: Timestamp.fromDate(DateTime.parse(_selectedDate)))
+    QuerySnapshot schSnap = await FirebaseFirestore.instance
+        .collection('scheduled_activities')
+        .where('actual_start_time', isGreaterThanOrEqualTo: startOfDay)
+        .where('actual_start_time', isLessThan: endOfDay)
+        .get();
+
+    for (QueryDocumentSnapshot scheduleDoc in schSnap.docs) {
+      Map<String, dynamic>? scheduleData =
+          scheduleDoc.data() as Map<String, dynamic>?;
+
+      String? activityId;
+
+      if (scheduleData != null) {
+        activityId = scheduleData['activities_id'] as String?;
+      }
+
+      Timestamp? actualStartTimeTimestamp =
+          scheduleData?['actual_start_time'] as Timestamp?;
+
+      DateTime? actualStartTime = actualStartTimeTimestamp?.toDate();
+
+      String? actualStartTimeString;
+      if (actualStartTime != null) {
+        actualStartTimeString = actualStartTime.toString();
+      }
+
+      Timestamp? actualEndTimeTimestamp =
+          scheduleData?['actual_end_time'] as Timestamp?;
+
+      DateTime? actualEndTime = actualEndTimeTimestamp?.toDate();
+
+      String? actualEndTimeString;
+      if (actualEndTime != null) {
+        actualEndTimeString = actualEndTime.toString();
+      }
+
+      // print("test 1: $actualStartTimeString");
+
+      if (activityId != null) {
+        // print("test 2: $activityId");
+        QuerySnapshot activityQuerySnapshot = await FirebaseFirestore.instance
+            .collection('activities')
+            .where(FieldPath.documentId, isEqualTo: activityId)
+            .where('user_id', isEqualTo: userID)
             .get();
 
-        for (QueryDocumentSnapshot activitySch in schSnap.docs) {
-          Map<String, dynamic> actSch =
-              activitySch.data() as Map<String, dynamic>;
-          String activitiesId = actSch['activities_id'];
+        if (activityQuerySnapshot.docs.isNotEmpty) {
+          DocumentSnapshot activityDoc = activityQuerySnapshot.docs.first;
+          Map<String, dynamic> activityData =
+              activityDoc.data() as Map<String, dynamic>;
 
-          DocumentSnapshot activitySnapshot = await FirebaseFirestore.instance
-              .collection('activities')
-              .doc(activitiesId)
+          QuerySnapshot locQuerySnapshot = await FirebaseFirestore.instance
+              .collection('locations')
+              .where('activities_id', isEqualTo: activityId)
               .get();
-          if (activitySnapshot.exists) {
-            Map<String, dynamic> activityData =
-                activitySnapshot.data() as Map<String, dynamic>;
 
-            // Fetch locations for this activity
-            QuerySnapshot locationsSnapshot = await FirebaseFirestore.instance
-                .collection('locations')
-                .where('activities_id', isEqualTo: activitySnapshot.id)
-                .get();
-
-            List<Locations> locationsList = [];
-            for (QueryDocumentSnapshot locationDoc in locationsSnapshot.docs) {
-              Map<String, dynamic> locationData =
-                  locationDoc.data() as Map<String, dynamic>;
-              Locations location = Locations(
-                address: locationData['address'],
-                latitude: locationData['latitude'],
-                longitude: locationData['longitude'],
-              );
-              locationsList.add(location);
-            }
-
-            int? color_a;
-            int? color_r;
-            int? color_g;
-            int? color_b;
-            DocumentSnapshot categorySnapshot = await FirebaseFirestore.instance
-                .collection('categories')
-                .doc(activityData['categories_id'])
-                .get();
-            if (categorySnapshot.exists) {
-              Map<String, dynamic> categoryData =
-                  categorySnapshot.data() as Map<String, dynamic>;
-              color_a = categoryData['color_a'];
-              color_r = categoryData['color_r'];
-              color_g = categoryData['color_g'];
-              color_b = categoryData['color_b'];
-            }
-
-            // Create ActivityList object
-            ActivityList activity = ActivityList(
-              id_activity: activitySnapshot.id,
-              id_scheduled: activitySch.id,
-              title: activityData['title'],
-              start_time: actSch['actual_start_time'],
-              end_time: actSch['actual_end_time'],
-              important_type: activityData['important_type'],
-              urgent_type: activityData['urgent_type'],
-              color_a: color_a ?? 0,
-              color_r: color_r ?? 0,
-              color_g: color_g ?? 0,
-              color_b: color_b ?? 0,
-              timezone: activityData['important_type'],
+          List<Locations> locations = locQuerySnapshot.docs.map((locDoc) {
+            Map<String, dynamic> locData =
+                locDoc.data() as Map<String, dynamic>;
+            return Locations(
+              address: locData['address'] as String,
+              latitude: locData['latitude'] as double,
+              longitude: locData['longitude'] as double,
             );
+          }).toList();
 
-            actList.add(activity);
+          String? categoriesId = activityData['categories_id'] as String?;
+          Map<String, dynamic>? categoryData;
+
+          if (categoriesId != null && categoriesId.isNotEmpty) {
+            DocumentSnapshot categoryDoc = await FirebaseFirestore.instance
+                .collection('categories')
+                .doc(categoriesId)
+                .get();
+            categoryData = categoryDoc.data() as Map<String, dynamic>?;
           }
+
+          ActivityList activity = ActivityList(
+            id_activity: activityId,
+            id_scheduled: scheduleDoc.id,
+            title: activityData['title'] as String,
+            start_time: actualStartTimeString!,
+            end_time: actualEndTimeString!,
+            important_type: activityData['important_type'] as String,
+            urgent_type: activityData['urgent_type'] as String,
+            color_a: categoryData != null ? categoryData['color_a'] as int : 0,
+            color_r: categoryData != null ? categoryData['color_r'] as int : 0,
+            color_g: categoryData != null ? categoryData['color_g'] as int : 0,
+            color_b: categoryData != null ? categoryData['color_b'] as int : 0,
+            timezone: "Test",
+            locations: locations,
+          );
+
+          activitiesList.add(activity);
+          // print("Activity List: $activitiesList");
         }
+      } else {
+        // print('Test');
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-        ),
-      );
-      print('Error: $e');
     }
+    return activitiesList;
+  }
+
+  void _fetchActivityList() async {
+    // Fetch activities list from your function
+    List<ActivityList> activities = await getActivityList();
+
+    // Update state
+    setState(() {
+      actList = activities;
+    });
   }
 
   // Activity List
-  Widget formattedListOfActivities() {
-    if (actList.isEmpty) {
+  Widget formattedListOfActivities(List<ActivityList> activList) {
+    if (activList.isEmpty) {
       return Container(
         margin: const EdgeInsets.only(
           bottom: 10,
@@ -295,7 +315,10 @@ class _HomeState extends State<Home> {
         width: double.infinity,
         height: double.infinity,
         alignment: Alignment.center,
-        color: Colors.white,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: const Color.fromARGB(255, 255, 170, 0),
+        ),
         child: Text(
           "You're free on this day, Enjoy :)",
           style: headerStyle,
@@ -303,18 +326,19 @@ class _HomeState extends State<Home> {
       );
     } else {
       return ListView.builder(
-        itemCount: actList.length,
-        itemBuilder: (BuildContext ctxt, int index) {
+        itemCount: activList.length,
+        itemBuilder: (BuildContext context, int index) {
           return GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => DetailActivity(
-                    activityID: actList[index].id_scheduled,
+                    activityID: activList[index].id_scheduled,
                   ),
                 ),
               );
+              // print(activList[index].id_scheduled);
             },
             child: Column(
               children: [
@@ -341,10 +365,18 @@ class _HomeState extends State<Home> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
                           color: Color.fromARGB(
-                            actList[index].color_a,
-                            actList[index].color_r,
-                            actList[index].color_g,
-                            actList[index].color_b,
+                            activList[index].color_a == 0
+                                ? 255
+                                : activList[index].color_a,
+                            activList[index].color_r == 0
+                                ? 255
+                                : activList[index].color_r,
+                            activList[index].color_g == 0
+                                ? 170
+                                : activList[index].color_g,
+                            activList[index].color_b == 0
+                                ? 0
+                                : activList[index].color_b,
                           ),
                         ),
                         child: Row(
@@ -356,23 +388,20 @@ class _HomeState extends State<Home> {
                                 children: [
                                   Container(
                                     decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(20),
-                                      color: getPriorityColor(
-                                        actList[index].important_type,
-                                        actList[index].urgent_type,
-                                      ),
-                                    ),
+                                        borderRadius: BorderRadius.circular(20),
+                                        color: const Color.fromARGB(
+                                            255, 3, 0, 66)),
                                     padding: const EdgeInsets.all(5),
                                     child: Text(
                                       getPriority(
-                                        actList[index].important_type,
-                                        actList[index].urgent_type,
+                                        activList[index].important_type,
+                                        activList[index].urgent_type,
                                       ),
-                                      style: textStyle,
+                                      style: textStyleWhite,
                                     ),
                                   ),
                                   Text(
-                                    actList[index].title,
+                                    activList[index].title,
                                     style: headerStyle,
                                   ),
                                   Text(
@@ -384,19 +413,21 @@ class _HomeState extends State<Home> {
                                     child: ListView.builder(
                                       shrinkWrap: true,
                                       itemCount:
-                                          actList[index].locations?.length,
+                                          activList[index].locations?.length ??
+                                              0,
                                       itemBuilder:
                                           (BuildContext ctxt, int indx) {
-                                        if (actList[index].locations?.length ==
-                                            0) {
-                                          // Still didn't show???
+                                        if (activList[index]
+                                                .locations
+                                                ?.isNotEmpty ==
+                                            true) {
                                           return Text(
-                                            "Wherever you want :)",
+                                            "- ${activList[index].locations?[indx].address}",
                                             style: textStyleGrey,
                                           );
                                         } else {
                                           return Text(
-                                            "- ${actList[index].locations?[indx].address}",
+                                            "Wherever you want :)",
                                             style: textStyleGrey,
                                           );
                                         }
@@ -407,7 +438,7 @@ class _HomeState extends State<Home> {
                                     height: 20,
                                   ),
                                   Text(
-                                    "${formattedActivityTimeOnly(actList[index].start_time)} - ${formattedActivityTimeOnly(ALs[index].end_time)}",
+                                    "${formattedActivityTimeOnly(activList[index].start_time)} - ${formattedActivityTimeOnly(activList[index].end_time)}",
                                     style: subHeaderStyle,
                                   ),
                                 ],
@@ -418,8 +449,8 @@ class _HomeState extends State<Home> {
                               child: Container(
                                 margin: const EdgeInsets.all(10),
                                 child: Image.asset(getPriorityImage(
-                                    actList[index].important_type,
-                                    actList[index].urgent_type)),
+                                    activList[index].important_type,
+                                    activList[index].urgent_type)),
                               ),
                             ),
                           ],
@@ -442,14 +473,14 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    bacaData();
-    print(_selectedDate);
-    getActivityList();
+    // bacaData();
+    // print("selected date: $_selectedDate");
+    _fetchActivityList();
 
     // Periodically check and update current activity
-    _timer = Timer.periodic(Duration(minutes: 1), (timer) {
-      updateCurrentActivity();
-      bacaDataCurrent();
+    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      // updateCurrentActivity();
+      // bacaDataCurrent();
     });
   }
 
@@ -501,7 +532,7 @@ class _HomeState extends State<Home> {
                       Container(
                         alignment: Alignment.center,
                         child: Text(
-                          "Today, ${_todayDate}",
+                          "Today, $_todayDate",
                           style: textStyleGrey,
                         ),
                       ),
@@ -512,13 +543,12 @@ class _HomeState extends State<Home> {
             ),
             // Current activity - Title
             Container(
-              margin: EdgeInsets.only(
+              margin: const EdgeInsets.only(
                 top: 15,
-                bottom: 5,
               ),
               width: double.infinity,
               child: Text(
-                "Current Task",
+                "Current Activity",
                 style: headerStyle,
               ),
             ),
@@ -529,19 +559,19 @@ class _HomeState extends State<Home> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => DetailActivity(
-                      activityID: ALs2!.id_scheduled,
+                      activityID: aLS2!.id_scheduled,
                     ),
                   ),
                 );
               },
-              child: ALs2 == null
+              child: aLS2 == null
                   ? Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(10),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(20),
-                        color: Colors.white,
+                        color: const Color.fromARGB(255, 255, 170, 0),
                       ),
                       child: Text(
                         "You're free for now :)",
@@ -554,10 +584,10 @@ class _HomeState extends State<Home> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(20),
                         color: Color.fromARGB(
-                          ALs2?.color_a ?? 255,
-                          ALs2?.color_r ?? 166,
-                          ALs2?.color_g ?? 255,
-                          ALs2?.color_b ?? 204,
+                          aLS2?.color_a ?? 255,
+                          aLS2?.color_r ?? 166,
+                          aLS2?.color_g ?? 255,
+                          aLS2?.color_b ?? 204,
                         ),
                       ),
                       child: Row(
@@ -570,37 +600,34 @@ class _HomeState extends State<Home> {
                                 Container(
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(20),
-                                    color: getPriorityColor(
-                                      ALs2!.important_type,
-                                      ALs2!.urgent_type,
-                                    ),
+                                    color: const Color.fromARGB(255, 3, 0, 66),
                                   ),
                                   padding: const EdgeInsets.all(5),
                                   child: Text(
                                     getPriority(
-                                      ALs2!.important_type,
-                                      ALs2!.urgent_type,
+                                      aLS2!.important_type,
+                                      aLS2!.urgent_type,
                                     ),
                                     style: textStyle,
                                   ),
                                 ),
                                 Text(
-                                  ALs2!.title,
+                                  aLS2!.title,
                                   style: screenTitleStyle,
                                 ),
                                 Text(
                                   "Do your activity at Place",
                                   style: textStyleGrey,
                                 ),
-                                Container(
-                                  alignment: Alignment.topLeft,
-                                  child: formattedCurrentLocations(),
-                                ),
+                                // Container(
+                                //   alignment: Alignment.topLeft,
+                                //   child: formattedCurrentLocations(),
+                                // ),
                                 const SizedBox(
                                   height: 20,
                                 ),
                                 Text(
-                                  "${formattedActivityTimeOnly(ALs2!.start_time)} - ${formattedActivityTimeOnly(ALs2!.end_time)}",
+                                  "${formattedActivityTimeOnly(aLS2!.start_time)} - ${formattedActivityTimeOnly(aLS2!.end_time)}",
                                   style: subHeaderStyle,
                                 ),
                               ],
@@ -611,7 +638,7 @@ class _HomeState extends State<Home> {
                             child: Container(
                               margin: const EdgeInsets.all(10),
                               child: Image.asset(getPriorityImage(
-                                  ALs2!.important_type, ALs2!.urgent_type)),
+                                  aLS2!.important_type, aLS2!.urgent_type)),
                             ),
                           ),
                         ],
@@ -626,34 +653,29 @@ class _HomeState extends State<Home> {
                 height: 90,
                 width: 60,
                 initialSelectedDate: DateTime.now(),
-                selectionColor: Color.fromARGB(255, 166, 204, 255),
-                selectedTextColor: Colors.black,
-                dayTextStyle: GoogleFonts.fredoka(
-                  textStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
+                selectionColor: const Color.fromARGB(255, 3, 0, 66),
+                selectedTextColor: Colors.white,
+                dayTextStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
                 ),
-                dateTextStyle: GoogleFonts.fredoka(
-                  textStyle: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey,
-                  ),
+                dateTextStyle: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
                 ),
-                monthTextStyle: GoogleFonts.fredoka(
-                  textStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
+                monthTextStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
                 ),
                 onDateChange: (date) {
-                  _selectedDate = DateFormat('yyyy-MM-dd').format(date);
-                  bacaData();
-                  getActivityList();
-                  print(_selectedDate);
+                  _selectedDate = date.toString();
+                  // bacaData();
+                  _fetchActivityList();
+                  // print("selected date: $_selectedDate");
+                  // print("user ID: $userID");
                 },
               ),
             ),
@@ -670,7 +692,7 @@ class _HomeState extends State<Home> {
             ),
             // Activity List - Content
             Expanded(
-              child: formattedListOfActivities(),
+              child: formattedListOfActivities(actList),
             ),
           ],
         ),
@@ -684,6 +706,9 @@ class _HomeState extends State<Home> {
         ),
         children: [
           FloatingActionButton.small(
+            foregroundColor: const Color.fromARGB(255, 255, 170, 0),
+            backgroundColor: const Color.fromARGB(255, 3, 0, 66),
+            splashColor: const Color.fromARGB(255, 255, 170, 0),
             shape: const CircleBorder(),
             heroTag: null,
             child: const Icon(Icons.add),
@@ -693,6 +718,9 @@ class _HomeState extends State<Home> {
             },
           ),
           FloatingActionButton.small(
+            foregroundColor: const Color.fromARGB(255, 255, 170, 0),
+            backgroundColor: const Color.fromARGB(255, 3, 0, 66),
+            splashColor: const Color.fromARGB(255, 255, 170, 0),
             shape: const CircleBorder(),
             heroTag: null,
             child: const Icon(Icons.edit),
@@ -702,6 +730,9 @@ class _HomeState extends State<Home> {
             },
           ),
           FloatingActionButton.small(
+            foregroundColor: const Color.fromARGB(255, 255, 170, 0),
+            backgroundColor: const Color.fromARGB(255, 3, 0, 66),
+            splashColor: const Color.fromARGB(255, 255, 170, 0),
             shape: const CircleBorder(),
             heroTag: null,
             child: const Icon(Icons.delete),

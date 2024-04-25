@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:pickleapp/main.dart';
-import 'package:pickleapp/screen/components/buttonWhite.dart';
+import 'package:pickleapp/screen/components/button_white.dart';
 import 'package:pickleapp/theme.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 // import 'package:pickleapp/screen/components/inputText.dart';
-import 'package:pickleapp/screen/components/buttonCalmBlue.dart';
+import 'package:pickleapp/screen/components/button_calm_blue.dart';
 
 import 'package:pickleapp/screen/page/profile.dart';
 
@@ -332,7 +332,7 @@ class _MChangePasswordState extends State<MyChangePassword> {
       Uri.parse("http://192.168.1.5:8012/picklePHP/changePassword.php"),
       body: {
         "newPassword": encryptPwd(_newPass.text),
-        "email": active_user,
+        "email": activeUser,
         "oldPassword": encryptPwd(_oldPass.text),
       },
     );

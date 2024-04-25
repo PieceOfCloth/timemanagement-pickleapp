@@ -1,28 +1,44 @@
 import 'package:flutter/material.dart';
-import 'package:timezone/timezone.dart' as tz;
+import 'package:pickleapp/screen/components/button_white.dart';
 import 'package:pickleapp/theme.dart';
 
-class MyTimeZones extends StatelessWidget {
-  MyTimeZones({super.key});
+class MyForgotPassword extends StatefulWidget {
+  const MyForgotPassword({super.key});
+
+  @override
+  State<MyForgotPassword> createState() => _MyForgotPasswordState();
+}
+
+class _MyForgotPasswordState extends State<MyForgotPassword> {
+  final TextEditingController _email = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Time Zone",
+          "Forgot Password",
           style: screenTitleStyle,
         ),
       ),
       body: Container(
-        margin: EdgeInsets.all(20),
-        color: Colors.amber,
+        margin: const EdgeInsets.all(20),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Input text email
+            // ignore: avoid_unnecessary_containers
             Container(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(
+                    "Email",
+                    style: subHeaderStyle,
+                  ),
+                  const SizedBox(
+                    height: 5,
+                  ),
                   Container(
                     padding: const EdgeInsets.only(
                       left: 10,
@@ -43,10 +59,10 @@ class MyTimeZones extends StatelessWidget {
                         Expanded(
                           child: TextFormField(
                             // readOnly: widget == null ? false : true,
-                            keyboardType: TextInputType.emailAddress,
+                            keyboardType: TextInputType.text,
                             // textCapitalization: TextCapitalization.sentences,
                             autofocus: false,
-                            // controller: _email,
+                            controller: _email,
                             style: textStyle,
                             decoration: InputDecoration(
                               hintText: "Enter your email here",
@@ -61,7 +77,11 @@ class MyTimeZones extends StatelessWidget {
               ),
             ),
             const SizedBox(
-              height: 10,
+              height: 30,
+            ),
+            MyButtonWhite(
+              label: "Reset Password",
+              onTap: () {},
             ),
           ],
         ),

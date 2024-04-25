@@ -8,10 +8,10 @@ import 'package:intl/intl.dart';
 
 import 'package:pickleapp/screen/class/profile.dart';
 
-import 'package:pickleapp/screen/components/buttonCalmBlue.dart';
-import 'package:pickleapp/screen/components/buttonWhite.dart';
-import 'package:pickleapp/screen/page/editProfile.dart';
-import 'package:pickleapp/screen/page/changePassword.dart';
+import 'package:pickleapp/screen/components/button_calm_blue.dart';
+import 'package:pickleapp/screen/components/button_white.dart';
+import 'package:pickleapp/screen/page/edit_profile.dart';
+import 'package:pickleapp/screen/page/change_password.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class Profile extends StatefulWidget {
@@ -42,7 +42,7 @@ class _ProfileState extends State<Profile> {
     final response = await http.post(
       Uri.parse("http://192.168.1.12:8012/picklePHP/profile.php"),
       body: {
-        "email": active_user,
+        "email": activeUser,
       },
     );
     if (response.statusCode == 200) {
