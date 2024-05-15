@@ -46,7 +46,7 @@ class _AddActivitiesState extends State<AddActivities> {
   String lat = "";
   String long = "";
 
-  Color currentColor = Color.fromARGB(255, 166, 204, 255);
+  Color currentColor = const Color.fromARGB(255, 166, 204, 255);
 
   final GlobalKey _tooltipTasks = GlobalKey();
   final GlobalKey _tooltipCategory = GlobalKey();
@@ -66,8 +66,8 @@ class _AddActivitiesState extends State<AddActivities> {
   // bool _isCheckedAlgorithm = false;
   final bool _isCheckedTaskStatus = false;
 
-  List<String> Cs = [];
-  List<Timezones> Ts = [];
+  List<String> cS = [];
+  List<Timezones> tS = [];
   List<Files> files = [];
   List<Tasks> taskList = [];
   List<Notifications> notificationList = [];
@@ -105,73 +105,6 @@ class _AddActivitiesState extends State<AddActivities> {
     colorG.text = int.parse(hexColor.substring(4, 6), radix: 16).toString();
     colorB.text = int.parse(hexColor.substring(6, 8), radix: 16).toString();
   }
-
-  /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
-
-  // void addNewCategory() async {
-  //   final response = await http.post(
-  //     Uri.parse("http://192.168.1.13:8012/picklePHP/addCategory.php"),
-  //     body: {
-  //       'title': newCat.text,
-  //       'colorA': colorA.text,
-  //       'colorR': colorR.text,
-  //       'colorG': colorG.text,
-  //       'colorB': colorB.text,
-  //     },
-  //   );
-  //   if (response.statusCode == 200) {
-  //     print(response.body);
-  //     Map json = jsonDecode(response.body);
-  //     if (json['result'] == 'success') {
-  //       if (!mounted) {
-  //         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-  //             content: Text(
-  //                 'Not added successfully, check your connection please :)')));
-  //       } else {
-  //         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-  //             content: Text('New activity categories have been added')));
-  //         newCat.clear();
-  //         currentColor = const Color.fromARGB(255, 166, 204, 255);
-  //         bacaData();
-  //       }
-  //     }
-  //   } else {
-  //     throw Exception('Failed to read API');
-  //   }
-  // }
-
-  /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
-
-  // Get data category from database
-  // Future<String> fetchDataCategory() async {
-  //   final response = await http.post(
-  //       Uri.parse("http://192.168.1.13:8012/picklePHP/category.php"),
-  //       body: {
-  //         /*'email': active_user,*/
-  //       });
-  //   if (response.statusCode == 200) {
-  //     return response.body;
-  //   } else {
-  //     throw Exception('Failed to read API');
-  //   }
-  // }
-
-  // Convert it from JSON to list of Activity Category
-  // bacaData() {
-  //   Cs.clear();
-  //   Future<String> dataCategory = fetchDataCategory();
-  //   dataCategory.then((value) {
-  //     setState(() {
-  //       Map json = jsonDecode(value);
-  //       if (json['dataCategory'] != null || json['dataCategory'].length > 0) {
-  //         for (var cat in json['dataCategory']) {
-  //           Category c = Category.fromJson(cat);
-  //           Cs.add(c);
-  //         }
-  //       }
-  //     });
-  //   });
-  // }
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
 

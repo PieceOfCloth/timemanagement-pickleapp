@@ -16,7 +16,7 @@ class MyButtonCalmBlue extends StatelessWidget {
         height: 50,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          color: Color.fromARGB(255, 166, 204, 255),
+          color: const Color.fromARGB(255, 166, 204, 255),
         ),
         child: Text(
           label,

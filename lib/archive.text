@@ -1,0 +1,376 @@
+// Home.dart
+// Get priority color based on important und urgent level
+  // Color getPriorityColor(important, urgent) {
+  //   if (important == "Important" && urgent == "Urgent") {
+  //     return Colors.red[600] ?? Colors.red;
+  //   } else if (important == "Important" && urgent == "Not Urgent") {
+  //     return Colors.yellow[600] ?? Colors.yellow;
+  //   } else if (important == "Not Important" && urgent == "Urgent") {
+  //     return Colors.green[600] ?? Colors.green;
+  //   } else {
+  //     return Colors.blue[600] ?? Colors.blue;
+  //   }
+  // }
+
+  // // Update only current activity to show
+  // void updateCurrentActivity() {
+  //   DateTime now = DateTime.now();
+  //   String currentTime = now.toString();
+  //   for (var act in ALs) {
+  //     if (currentTime.compareTo(act.start_time) >= 0 &&
+  //         currentTime.compareTo(act.end_time) < 0) {
+  //       setState(() {
+  //         scheduledID = act.id_scheduled;
+  //       });
+  //       break;
+  //     }
+  //   }
+  // }
+  // // Get data current activity from database
+  // Future<String> fetchCurrentDataActivity() async {
+  //   final response2 = await http.post(
+  //       Uri.parse("http://192.168.1.12:8012/picklePHP/currentActivity.php"),
+  //       body: {
+  //         'email': active_user,
+  //         'start_time': '%${_selectedDate}%',
+  //         'sch_id': scheduledID.toString(),
+  //       });
+  //   if (response2.statusCode == 200) {
+  //     return response2.body;
+  //   } else {
+  //     throw Exception('Failed to read API');
+  //   }
+  // }
+  // // Convert it from JSON to list of ActivityList
+  // bacaDataCurrent() {
+  //   fetchCurrentDataActivity().then((v) {
+  //     Map json2 = jsonDecode(v);
+  //     aLS2 = ActivityList.fromJson(json2['dataActivity']);
+  //     setState(() {});
+  //   });
+  // }
+  // Get data from database
+  // Future<String> fetchData() async {
+  //   final response = await http.post(
+  //     Uri.parse("http://192.168.1.12:8012/picklePHP/activityList.php"),
+  //     body: {
+  //       'email': active_user,
+  //       'start_time': '%${_selectedDate}%',
+  //     }, // Untuk mengirim data (form) yang akan dibaca di PHP dengan $_POST
+  //   );
+  //   if (response.statusCode == 200) {
+  //     return response.body;
+  //   } else {
+  //     throw Exception('Failed to read API');
+  //   }
+  // }
+  // Convert it from JSON to list of ActivityList
+  // bacaData() {
+  //   ALs.clear();
+  //   Future<String> dataActivity = fetchData();
+  //   dataActivity.then((value) {
+  //     setState(() {
+  //       Map json = jsonDecode(value);
+  //       if (json['dataActivity'] != null || json['dataActivity'].length > 0) {
+  //         for (var activity in json['dataActivity']) {
+  //           ActivityList al = ActivityList.fromJson(activity);
+  //           ALs.add(al);
+  //         }
+  //       }
+  //     });
+  //   });
+  // }
+  // // Current Locations Activity
+  // Widget formattedCurrentLocations() {
+  //   if (aLS2?.locations?.isEmpty ?? true) {
+  //     // List is empty
+  //     return const Text("Wherever you want :)");
+  //   } else {
+  //     //List is not empty
+  //     return Column(
+  //       children: (aLS2?.locations ?? [])
+  //           .map(
+  //             (location) {
+  //               return Text(
+  //                 "- ${location.address}",
+  //                 style: textStyleGrey,
+  //               );
+  //             },
+  //           )
+  //           .whereType<Widget>()
+  //           .toList(),
+  //     );
+  //   }
+  // }
+
+/* ------------------------------------------------------------ */
+
+// add_activity.dart
+  // void addNewCategory() async {
+  //   final response = await http.post(
+  //     Uri.parse("http://192.168.1.13:8012/picklePHP/addCategory.php"),
+  //     body: {
+  //       'title': newCat.text,
+  //       'colorA': colorA.text,
+  //       'colorR': colorR.text,
+  //       'colorG': colorG.text,
+  //       'colorB': colorB.text,
+  //     },
+  //   );
+  //   if (response.statusCode == 200) {
+  //     print(response.body);
+  //     Map json = jsonDecode(response.body);
+  //     if (json['result'] == 'success') {
+  //       if (!mounted) {
+  //         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+  //             content: Text(
+  //                 'Not added successfully, check your connection please :)')));
+  //       } else {
+  //         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+  //             content: Text('New activity categories have been added')));
+  //         newCat.clear();
+  //         currentColor = const Color.fromARGB(255, 166, 204, 255);
+  //         bacaData();
+  //       }
+  //     }
+  //   } else {
+  //     throw Exception('Failed to read API');
+  //   }
+  // }
+
+  /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
+
+  // Get data category from database
+  // Future<String> fetchDataCategory() async {
+  //   final response = await http.post(
+  //       Uri.parse("http://192.168.1.13:8012/picklePHP/category.php"),
+  //       body: {
+  //         /*'email': active_user,*/
+  //       });
+  //   if (response.statusCode == 200) {
+  //     return response.body;
+  //   } else {
+  //     throw Exception('Failed to read API');
+  //   }
+  // }
+
+  // Convert it from JSON to list of Activity Category
+  // bacaData() {
+  //   cS.clear();
+  //   Future<String> dataCategory = fetchDataCategory();
+  //   dataCategory.then((value) {
+  //     setState(() {
+  //       Map json = jsonDecode(value);
+  //       if (json['dataCategory'] != null || json['dataCategory'].length > 0) {
+  //         for (var cat in json['dataCategory']) {
+  //           Category c = Category.fromJson(cat);
+  //           cS.add(c);
+  //         }
+  //       }
+  //     });
+  //   });
+  // }
+
+
+
+//detail_activity.dart
+  // Future<String> fetchData() async {
+  //   final response = await http.post(
+  //       Uri.parse("http://192.168.1.12:8012/picklePHP/detailActivity.php"),
+  //       body: {'sch_id': widget.scheduledID.toString()});
+  //   if (response.statusCode == 200) {
+  //     return response.body;
+  //   } else {
+  //     throw Exception('Failed to read API');
+  //   }
+  // }
+
+  // bacaData() {
+  //   fetchData().then((value) {
+  //     Map json = jsonDecode(value);
+  //     DAs = DetailActivities.fromJson(json['dataDetail']);
+  //     setState(() {});
+  //   });
+  // }
+
+  // Widget formattedListOfFiles() {
+  //   if (DAs?.files?.isEmpty ?? true) {
+  //     // List is empty
+  //     return const Text("There is no files");
+  //   } else {
+  //     // List isn't empty
+  //     return ListView.builder(
+  //       scrollDirection: Axis.horizontal,
+  //       itemCount: DAs?.files?.length,
+  //       itemBuilder: (BuildContext ctxt, int index) {
+  //         return GestureDetector(
+  //           onTap: () {
+  //             // Navigator.push(
+  //             //   context,
+  //             //   MaterialPageRoute(
+  //             //     builder: (context) => DetailActivity(
+  //             //       scheduledID: ALs[index].id_scheduled,
+  //             //     ),
+  //             //     // DetailMovie2(movieID: PMs[index].id),
+  //             //   ),
+  //             // );
+  //           },
+  //           child: Row(
+  //             children: [
+  //               // file
+  //               Container(
+  //                 width: MediaQuery.of(context).size.width * 0.5,
+  //                 margin: const EdgeInsets.only(
+  //                   right: 5,
+  //                 ),
+  //                 padding: const EdgeInsets.all(5),
+  //                 decoration: BoxDecoration(
+  //                   borderRadius: BorderRadius.circular(10),
+  //                   color: Colors.white,
+  //                 ),
+  //                 child: Row(
+  //                   children: [
+  //                     Expanded(
+  //                       flex: 2,
+  //                       child: Container(
+  //                         padding: const EdgeInsets.all(10),
+  //                         decoration: BoxDecoration(
+  //                           borderRadius: BorderRadius.circular(10),
+  //                           color: Colors.purple[100],
+  //                         ),
+  //                         child: Icon(
+  //                           Icons.file_present_rounded,
+  //                           color: Colors.purple[700],
+  //                         ),
+  //                       ),
+  //                     ),
+  //                     const SizedBox(
+  //                       width: 10,
+  //                     ),
+  //                     Expanded(
+  //                       flex: 6,
+  //                       child: Text(
+  //                         DAs?.files?[index]['url'],
+  //                         style: subHeaderStyle,
+  //                       ),
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         );
+  //       },
+  //     );
+  //   }
+  // }
+
+  // Widget formattedListOfTasks() {
+  //   if (DAs?.tasks?.isEmpty ?? true) {
+  //     // List is empty
+  //     return const Text("There is no tasks");
+  //   } else {
+  //     //List is not empty
+  //     return Column(
+  //       children: DAs?.tasks?.map(
+  //             (task) {
+  //               // Task
+  //               return Row(
+  //                 children: [
+  //                   Expanded(
+  //                     flex: 2,
+  //                     child: Checkbox(
+  //                       // not yet implemented with status in activity_tasks table
+  //                       value: _isChecked,
+  //                       onChanged: (bool? v) {
+  //                         setState(() {
+  //                           _isChecked = v!;
+  //                         });
+  //                       },
+  //                     ),
+  //                   ),
+  //                   Expanded(
+  //                     flex: 7,
+  //                     child: Text(
+  //                       task['task'],
+  //                       style: GoogleFonts.fredoka(
+  //                         textStyle: TextStyle(
+  //                           fontSize: 18,
+  //                           fontWeight: FontWeight.bold,
+  //                           color: Colors.black,
+  //                           decoration:
+  //                               _isChecked ? TextDecoration.lineThrough : null,
+  //                         ),
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ],
+  //               );
+  //             },
+  //           ).toList() ??
+  //           [],
+  //     );
+  //   }
+  // }
+
+  // Widget formattedListOfLocations() {
+  //   if (DAs?.locations?.isEmpty ?? true) {
+  //     // List is empty
+  //     return const Text("There is no locations");
+  //   } else {
+  //     //List is not empty
+  //     return Column(
+  //       children: DAs?.locations?.map(
+  //             (location) {
+  //               // Address
+  //               return Container(
+  //                 child: GestureDetector(
+  //                   // Link to open gmap and location address
+  //                   onTap: () {
+  //                     // Navigator.push(
+  //                     //   context,
+  //                     //   MaterialPageRoute(
+  //                     //       builder: (context) => DetailActivity()),
+  //                     // );
+  //                   },
+  //                   child: Row(
+  //                     children: [
+  //                       Expanded(
+  //                         flex: 2,
+  //                         child: Container(
+  //                           padding: const EdgeInsets.all(10),
+  //                           decoration: BoxDecoration(
+  //                             borderRadius: BorderRadius.circular(10),
+  //                             color: Colors.orange[100],
+  //                           ),
+  //                           child: Icon(
+  //                             Icons.location_on_sharp,
+  //                             color: Colors.orange[700],
+  //                           ),
+  //                         ),
+  //                       ),
+  //                       const SizedBox(
+  //                         width: 10,
+  //                       ),
+  //                       Expanded(
+  //                         flex: 6,
+  //                         child: Column(
+  //                           crossAxisAlignment: CrossAxisAlignment.start,
+  //                           children: [
+  //                             Text(
+  //                               location["address"],
+  //                               style: subHeaderStyle,
+  //                             ),
+  //                           ],
+  //                         ),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                 ),
+  //               );
+  //             },
+  //           ).toList() ??
+  //           [],
+  //     );
+  //   }
+  // }

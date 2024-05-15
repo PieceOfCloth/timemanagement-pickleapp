@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 import 'package:intl/intl.dart';
 import 'package:date_picker_timeline/date_picker_timeline.dart';
 import 'package:pickleapp/screen/class/location.dart';
@@ -10,8 +9,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pickleapp/theme.dart';
 import 'package:pickleapp/screen/class/activity_list.dart';
 import 'package:pickleapp/screen/fabexpandable/add_activities.dart';
-import 'package:pickleapp/screen/fabexpandable/edit_activities.dart';
-import 'package:pickleapp/screen/fabexpandable/delete_activities.dart';
 import 'package:pickleapp/auth.dart';
 
 final scaffoldKey = GlobalKey<ScaffoldMessengerState>();
@@ -20,11 +17,11 @@ class Home extends StatefulWidget {
   const Home({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _HomeState createState() => _HomeState();
 }
 
 class _HomeState extends State<Home> {
-  final _key = GlobalKey<ExpandableFabState>();
   String _selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
   final String _todayDate =
       DateFormat("dd MMM yyyy").format(DateTime.now()).toString();
@@ -37,12 +34,16 @@ class _HomeState extends State<Home> {
   late Future<List<ActivityList>> activityListFuture;
   Timer? _timer;
 
+  /* ------------------------------------------------------------------------------------------------------------------- */
+
   @override
   void dispose() {
     // Cancel the timer in the dispose method
     _timer?.cancel();
     super.dispose();
   }
+
+  /* ------------------------------------------------------------------------------------------------------------------- */
 
   // Image for priority type to use it in containers
   String getPriorityImage(important, urgent) {
@@ -70,6 +71,8 @@ class _HomeState extends State<Home> {
     }
   }
 
+  /* ------------------------------------------------------------------------------------------------------------------- */
+
   // Change format time to hh:mm PM/AM
   String formattedActivityTimeOnly(String activityTime) {
     DateTime time = DateTime.parse(activityTime);
@@ -79,109 +82,7 @@ class _HomeState extends State<Home> {
     return formattedTime;
   }
 
-  // Get priority color based on important und urgent level
-  // Color getPriorityColor(important, urgent) {
-  //   if (important == "Important" && urgent == "Urgent") {
-  //     return Colors.red[600] ?? Colors.red;
-  //   } else if (important == "Important" && urgent == "Not Urgent") {
-  //     return Colors.yellow[600] ?? Colors.yellow;
-  //   } else if (important == "Not Important" && urgent == "Urgent") {
-  //     return Colors.green[600] ?? Colors.green;
-  //   } else {
-  //     return Colors.blue[600] ?? Colors.blue;
-  //   }
-  // }
-
-  // // Update only current activity to show
-  // void updateCurrentActivity() {
-  //   DateTime now = DateTime.now();
-  //   String currentTime = now.toString();
-  //   for (var act in ALs) {
-  //     if (currentTime.compareTo(act.start_time) >= 0 &&
-  //         currentTime.compareTo(act.end_time) < 0) {
-  //       setState(() {
-  //         scheduledID = act.id_scheduled;
-  //       });
-  //       break;
-  //     }
-  //   }
-  // }
-  // // Get data current activity from database
-  // Future<String> fetchCurrentDataActivity() async {
-  //   final response2 = await http.post(
-  //       Uri.parse("http://192.168.1.12:8012/picklePHP/currentActivity.php"),
-  //       body: {
-  //         'email': active_user,
-  //         'start_time': '%${_selectedDate}%',
-  //         'sch_id': scheduledID.toString(),
-  //       });
-  //   if (response2.statusCode == 200) {
-  //     return response2.body;
-  //   } else {
-  //     throw Exception('Failed to read API');
-  //   }
-  // }
-  // // Convert it from JSON to list of ActivityList
-  // bacaDataCurrent() {
-  //   fetchCurrentDataActivity().then((v) {
-  //     Map json2 = jsonDecode(v);
-  //     aLS2 = ActivityList.fromJson(json2['dataActivity']);
-  //     setState(() {});
-  //   });
-  // }
-  // Get data from database
-  // Future<String> fetchData() async {
-  //   final response = await http.post(
-  //     Uri.parse("http://192.168.1.12:8012/picklePHP/activityList.php"),
-  //     body: {
-  //       'email': active_user,
-  //       'start_time': '%${_selectedDate}%',
-  //     }, // Untuk mengirim data (form) yang akan dibaca di PHP dengan $_POST
-  //   );
-  //   if (response.statusCode == 200) {
-  //     return response.body;
-  //   } else {
-  //     throw Exception('Failed to read API');
-  //   }
-  // }
-  // Convert it from JSON to list of ActivityList
-  // bacaData() {
-  //   ALs.clear();
-  //   Future<String> dataActivity = fetchData();
-  //   dataActivity.then((value) {
-  //     setState(() {
-  //       Map json = jsonDecode(value);
-  //       if (json['dataActivity'] != null || json['dataActivity'].length > 0) {
-  //         for (var activity in json['dataActivity']) {
-  //           ActivityList al = ActivityList.fromJson(activity);
-  //           ALs.add(al);
-  //         }
-  //       }
-  //     });
-  //   });
-  // }
-  // // Current Locations Activity
-  // Widget formattedCurrentLocations() {
-  //   if (aLS2?.locations?.isEmpty ?? true) {
-  //     // List is empty
-  //     return const Text("Wherever you want :)");
-  //   } else {
-  //     //List is not empty
-  //     return Column(
-  //       children: (aLS2?.locations ?? [])
-  //           .map(
-  //             (location) {
-  //               return Text(
-  //                 "- ${location.address}",
-  //                 style: textStyleGrey,
-  //               );
-  //             },
-  //           )
-  //           .whereType<Widget>()
-  //           .toList(),
-  //     );
-  //   }
-  // }
+  /* ------------------------------------------------------------------------------------------------------------------- */
 
   Future<List<ActivityList>> getActivityList() async {
     List<ActivityList> activitiesList = [];
@@ -305,6 +206,8 @@ class _HomeState extends State<Home> {
     });
   }
 
+  /* ------------------------------------------------------------------------------------------------------------------- */
+
   // Activity List
   Widget formattedListOfActivities(List<ActivityList> activList) {
     if (activList.isEmpty) {
@@ -334,7 +237,7 @@ class _HomeState extends State<Home> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => DetailActivity(
-                    activityID: activList[index].id_scheduled,
+                    scheduledID: activList[index].id_scheduled,
                   ),
                 ),
               );
@@ -379,14 +282,14 @@ class _HomeState extends State<Home> {
                                 : activList[index].color_b,
                           ),
                         ),
-                        child: Row(
+                        child: Column(
                           children: [
-                            Expanded(
-                              flex: 7,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Container(
                                     decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(20),
                                         color: const Color.fromARGB(
@@ -400,58 +303,128 @@ class _HomeState extends State<Home> {
                                       style: textStyleWhite,
                                     ),
                                   ),
-                                  Text(
-                                    activList[index].title,
-                                    style: headerStyle,
-                                  ),
-                                  Text(
-                                    "Do your activity at: ",
-                                    style: textStyleGrey,
-                                  ),
-                                  Container(
-                                    alignment: Alignment.topLeft,
-                                    child: ListView.builder(
-                                      shrinkWrap: true,
-                                      itemCount:
-                                          activList[index].locations?.length ??
-                                              0,
-                                      itemBuilder:
-                                          (BuildContext ctxt, int indx) {
-                                        if (activList[index]
-                                                .locations
-                                                ?.isNotEmpty ==
-                                            true) {
-                                          return Text(
-                                            "- ${activList[index].locations?[indx].address}",
-                                            style: textStyleGrey,
-                                          );
-                                        } else {
-                                          return Text(
-                                            "Wherever you want :)",
-                                            style: textStyleGrey,
-                                          );
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    height: 20,
-                                  ),
-                                  Text(
-                                    "${formattedActivityTimeOnly(activList[index].start_time)} - ${formattedActivityTimeOnly(activList[index].end_time)}",
-                                    style: subHeaderStyle,
-                                  ),
-                                ],
-                              ),
+                                ),
+                                Align(
+                                  alignment: Alignment.topRight,
+                                  child: PopupMenuButton(
+                                      itemBuilder: (BuildContext context) => [
+                                            const PopupMenuItem(
+                                              value: 'delete',
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.delete,
+                                                      color: Colors.black),
+                                                  SizedBox(width: 8),
+                                                  Text('Delete'),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                      onSelected: (value) {
+                                        showDialog(
+                                          context: context,
+                                          builder: (BuildContext context) {
+                                            return AlertDialog(
+                                              title:
+                                                  const Text("Confirm Delete"),
+                                              content: const Text(
+                                                  'Are you sure you want to delete this activity?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    deleteSchedule(
+                                                        activList[index]
+                                                            .id_scheduled,
+                                                        activList[index]
+                                                            .id_activity);
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                            const SnackBar(
+                                                      content:
+                                                          Text('Item deleted'),
+                                                    ));
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                  child: const Text('Yes'),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+                                      }),
+                                ),
+                              ],
                             ),
-                            Expanded(
-                              flex: 3,
-                              child: Container(
-                                margin: const EdgeInsets.all(10),
-                                child: Image.asset(getPriorityImage(
-                                    activList[index].important_type,
-                                    activList[index].urgent_type)),
-                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 7,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        activList[index].title,
+                                        style: headerStyle,
+                                      ),
+                                      Text(
+                                        "Do your activity at: ",
+                                        style: textStyleGrey,
+                                      ),
+                                      Container(
+                                        alignment: Alignment.topLeft,
+                                        child: ListView.builder(
+                                          shrinkWrap: true,
+                                          itemCount: activList[index]
+                                                  .locations
+                                                  ?.length ??
+                                              0,
+                                          itemBuilder:
+                                              (BuildContext ctxt, int indx) {
+                                            if (activList[index]
+                                                    .locations
+                                                    ?.isNotEmpty ==
+                                                true) {
+                                              return Text(
+                                                "- ${activList[index].locations?[indx].address}",
+                                                style: textStyleGrey,
+                                              );
+                                            } else {
+                                              return Text(
+                                                "Wherever you want :)",
+                                                style: textStyleGrey,
+                                              );
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        height: 20,
+                                      ),
+                                      Text(
+                                        "${formattedActivityTimeOnly(activList[index].start_time)} - ${formattedActivityTimeOnly(activList[index].end_time)}",
+                                        style: subHeaderStyle,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 3,
+                                  child: Container(
+                                    margin: const EdgeInsets.all(10),
+                                    child: Image.asset(getPriorityImage(
+                                        activList[index].important_type,
+                                        activList[index].urgent_type)),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -470,6 +443,39 @@ class _HomeState extends State<Home> {
     }
   }
 
+  /* ------------------------------------------------------------------------------------------------------------------- */
+
+  void deleteSchedule(String scheduleID, String activityID) async {
+    DocumentReference scheduleDocRef = FirebaseFirestore.instance
+        .collection('scheduled_activities')
+        .doc(scheduleID);
+
+    DocumentSnapshot scheduleDocSnapshot = await scheduleDocRef.get();
+
+    // Check if the document exists and the activities_id field matches the one you provided
+    if (scheduleDocSnapshot.exists &&
+        scheduleDocSnapshot['activities_id'] == activityID) {
+      // If the activities_id matches, delete the document
+      await scheduleDocRef.delete();
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The schedule activity has been successfully deleted'),
+        ),
+      );
+    } else {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The schedule activity unsuccessfully deleted'),
+        ),
+      );
+      print('Document not found or activities_id does not match');
+    }
+  }
+
+  /* ------------------------------------------------------------------------------------------------------------------- */
+
   @override
   void initState() {
     super.initState();
@@ -483,6 +489,8 @@ class _HomeState extends State<Home> {
       // bacaDataCurrent();
     });
   }
+
+  /* ------------------------------------------------------------------------------------------------------------------- */
 
   @override
   Widget build(BuildContext context) {
@@ -559,7 +567,7 @@ class _HomeState extends State<Home> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => DetailActivity(
-                      activityID: aLS2!.id_scheduled,
+                      scheduledID: aLS2!.id_scheduled,
                     ),
                   ),
                 );
@@ -698,50 +706,15 @@ class _HomeState extends State<Home> {
         ),
       ),
       // Floating Action Button
-      floatingActionButtonLocation: ExpandableFab.location,
-      floatingActionButton: ExpandableFab(
-        key: _key,
-        overlayStyle: ExpandableFabOverlayStyle(
-          blur: 3,
-        ),
-        children: [
-          FloatingActionButton.small(
-            foregroundColor: const Color.fromARGB(255, 255, 170, 0),
-            backgroundColor: const Color.fromARGB(255, 3, 0, 66),
-            splashColor: const Color.fromARGB(255, 255, 170, 0),
-            shape: const CircleBorder(),
-            heroTag: null,
-            child: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.of(context).push(
-                  MaterialPageRoute(builder: ((context) => AddActivities())));
-            },
-          ),
-          FloatingActionButton.small(
-            foregroundColor: const Color.fromARGB(255, 255, 170, 0),
-            backgroundColor: const Color.fromARGB(255, 3, 0, 66),
-            splashColor: const Color.fromARGB(255, 255, 170, 0),
-            shape: const CircleBorder(),
-            heroTag: null,
-            child: const Icon(Icons.edit),
-            onPressed: () {
-              Navigator.of(context).push(
-                  MaterialPageRoute(builder: ((context) => EditActivities())));
-            },
-          ),
-          FloatingActionButton.small(
-            foregroundColor: const Color.fromARGB(255, 255, 170, 0),
-            backgroundColor: const Color.fromARGB(255, 3, 0, 66),
-            splashColor: const Color.fromARGB(255, 255, 170, 0),
-            shape: const CircleBorder(),
-            heroTag: null,
-            child: const Icon(Icons.delete),
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: ((context) => DeleteActivities())));
-            },
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        shape: const CircleBorder(),
+        foregroundColor: const Color.fromARGB(255, 3, 0, 66),
+        backgroundColor: const Color.fromARGB(255, 255, 170, 0),
+        onPressed: () {
+          Navigator.of(context).push(
+              MaterialPageRoute(builder: ((context) => const AddActivities())));
+        },
+        child: const Icon(Icons.add_rounded),
       ),
     );
   }

@@ -1,13 +1,13 @@
 // ignore_for_file: non_constant_identifier_names
 
 class DetailActivities {
-  int id_act;
-  int id_sch;
+  String id_act;
+  String id_sch;
   String title;
   String imp_type;
   String urg_type;
   String rpt_freq;
-  int? rpt_int;
+  int? rpt_dur;
   String? cat_name;
   int? clr_a;
   int? clr_r;
@@ -26,7 +26,7 @@ class DetailActivities {
     required this.imp_type,
     required this.urg_type,
     required this.rpt_freq,
-    this.rpt_int,
+    this.rpt_dur,
     this.cat_name,
     this.clr_a,
     this.clr_r,
@@ -41,13 +41,13 @@ class DetailActivities {
 
   factory DetailActivities.fromJson(Map<String, dynamic> json) {
     return DetailActivities(
-      id_act: json['activity_id'] as int,
-      id_sch: json['scheduled_id'] as int,
+      id_act: json['activity_id'] as String,
+      id_sch: json['scheduled_id'] as String,
       title: json['title'] as String,
       imp_type: json['important_type'] as String,
       urg_type: json['urgent_type'] as String,
       rpt_freq: json['repeat_frequency'] as String,
-      rpt_int: json['repeat_interval'] as int?,
+      rpt_dur: json['repeat_interval'] as int?,
       cat_name: json['category_name'] as String?,
       clr_a: json['color_a'] as int?,
       clr_r: json['color_r'] as int?,

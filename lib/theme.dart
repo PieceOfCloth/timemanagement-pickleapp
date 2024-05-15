@@ -22,32 +22,26 @@ class Themes {
 }
 
 TextStyle get screenTitleStyle {
-  return GoogleFonts.poppins(
-    textStyle: const TextStyle(
-      fontSize: 28,
-      fontWeight: FontWeight.bold,
-      color: Colors.black,
-    ),
+  return const TextStyle(
+    fontSize: 28,
+    fontWeight: FontWeight.bold,
+    color: Colors.black,
   );
 }
 
 TextStyle get screenTitleStyleGrey {
-  return GoogleFonts.poppins(
-    textStyle: TextStyle(
-      fontSize: 28,
-      fontWeight: FontWeight.bold,
-      color: Colors.grey[600],
-    ),
+  return TextStyle(
+    fontSize: 28,
+    fontWeight: FontWeight.bold,
+    color: Colors.grey[600],
   );
 }
 
 TextStyle get screenTitleStyleWhite {
-  return GoogleFonts.poppins(
-    textStyle: const TextStyle(
-      fontSize: 28,
-      fontWeight: FontWeight.bold,
-      color: Colors.white,
-    ),
+  return const TextStyle(
+    fontSize: 28,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
   );
 }
 
