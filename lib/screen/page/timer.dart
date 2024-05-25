@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 // import 'dart:math';
 // import 'package:intl/intl.dart';
@@ -5,6 +6,7 @@ import 'dart:async';
 // import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:numberpicker/numberpicker.dart';
+import 'package:pickleapp/screen/class/task.dart';
 
 import 'package:pickleapp/theme.dart';
 
@@ -19,6 +21,7 @@ class TimersState extends State<Timers> {
   int second = 0;
   int minute = 0;
   int secondsWorkTotals = 0;
+  String? activityID;
   // int secondsBreakTotals = 0;
   late Timer _timer;
   bool running = false;
@@ -27,6 +30,8 @@ class TimersState extends State<Timers> {
   bool breakSession = false;
   bool _isStart = false;
   bool isFullScreen = false;
+  List<Map<String, dynamic>> todayActivities = [];
+  List<Tasks> tasks = [];
 
   // late FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin;
 
@@ -260,9 +265,217 @@ class TimersState extends State<Timers> {
 
   /* ------------------------------------------------------------------------------------------------------------------- */
 
+  Future<List<Map<String, dynamic>>> getListOfTodayActivities() async {
+    final today = DateTime.now();
+    final start = DateTime(today.year, today.month, today.day);
+    final end = DateTime(today.year, today.month, today.day, 23, 59, 59);
+    Set<String> uniqueID = <String>{};
+    todayActivities = [];
+
+    final schQuery = await FirebaseFirestore.instance
+        .collection('scheduled_activities')
+        .where('actual_start_time', isGreaterThanOrEqualTo: start)
+        .where('actual_end_time', isLessThan: end)
+        .get();
+    if (schQuery.docs.isNotEmpty) {
+      for (var doc in schQuery.docs) {
+        var actID = doc['activities_id'];
+        if (!uniqueID.contains(actID)) {
+          final actDoc = await FirebaseFirestore.instance
+              .collection('activities')
+              .doc(actID)
+              .get();
+          if (actDoc.exists) {
+            var actData = actDoc.data()!;
+            actData['id'] = actID;
+
+            uniqueID.add(actID);
+            todayActivities.add(actData);
+          }
+        }
+      }
+    }
+
+    return todayActivities;
+  }
+
+  Future<List<Tasks>> getTaskListOfTodayActivities(String id) async {
+    tasks = [];
+
+    final taskQuery = await FirebaseFirestore.instance
+        .collection('tasks')
+        .where('activities_id', isEqualTo: id)
+        .get();
+    if (taskQuery.docs.isNotEmpty) {
+      for (var doc in taskQuery.docs) {
+        tasks.add(Tasks(
+          id: doc.id,
+          task: doc['title'],
+          status: doc['status'],
+        ));
+      }
+    }
+
+    return tasks;
+  }
+
+  Future<void> updateStatusTask(String? id, bool? status) async {
+    await FirebaseFirestore.instance
+        .collection('tasks')
+        .doc(id)
+        .update({'status': status});
+  }
+
+  /* ------------------------------------------------------------------------------------------------------------------- */
+
+  Widget formattedActivityOption() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: getListOfTodayActivities(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            width: double.infinity,
+            child: Align(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        } else if (snapshot.hasError) {
+          return SizedBox(
+            width: double.infinity,
+            child: Align(
+              child: Text('Error: ${snapshot.error}'),
+            ),
+          );
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox(
+            width: double.infinity,
+            child: Align(
+              child: Text("There aren't any activities for today"),
+            ),
+          );
+        } else {
+          return SizedBox(
+            width: double.infinity,
+            child: DropdownButton<String>(
+              items: snapshot.data!.map((act) {
+                return DropdownMenuItem<String>(
+                  value: act['id'],
+                  child: Text(act['title']),
+                );
+              }).toList(),
+              onChanged: (v) {
+                setState(() {
+                  activityID = v;
+                });
+              },
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Widget formattedListofTask() {
+    if (activityID != null) {
+      return FutureBuilder<List<Tasks>>(
+        future: getTaskListOfTodayActivities(activityID!),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const SizedBox(
+              width: double.infinity,
+              child: Align(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          } else if (snapshot.hasError) {
+            return SizedBox(
+              width: double.infinity,
+              child: Align(
+                child: Text('Error: ${snapshot.error}'),
+              ),
+            );
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const SizedBox(
+              width: double.infinity,
+              child: Align(
+                child: Text("There aren't any activities for today"),
+              ),
+            );
+          } else {
+            return SizedBox(
+              width: double.infinity,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: snapshot.data!.length,
+                itemBuilder: (context, index) {
+                  return Container(
+                    width: 200,
+                    alignment: Alignment.centerLeft,
+                    margin: const EdgeInsets.only(right: 5),
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(
+                        color: Colors.purple,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: snapshot.data![index].status,
+                          onChanged: (value) {
+                            setState(() {
+                              snapshot.data![index].status = value!;
+                            });
+                            updateStatusTask(snapshot.data![index].id, value);
+                          },
+                        ),
+                        const SizedBox(
+                          width: 5,
+                        ),
+                        Expanded(
+                          child: Text(
+                            snapshot.data![index].task,
+                            style: GoogleFonts.poppins(
+                              textStyle: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black,
+                                decoration: _isChecked == true
+                                    ? TextDecoration.lineThrough
+                                    : TextDecoration.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            );
+          }
+        },
+      );
+    } else {
+      return const SizedBox(
+        width: double.infinity,
+        child: Align(
+          child: Text(
+              "You haven't selected an activity or there are no activities today"),
+        ),
+      );
+    }
+  }
+
+  /* ------------------------------------------------------------------------------------------------------------------- */
+
   @override
   void initState() {
     super.initState();
+    getListOfTodayActivities();
+    print(todayActivities);
   }
 
   @override
@@ -380,61 +593,11 @@ class TimersState extends State<Timers> {
                     const SizedBox(
                       height: 30,
                     ),
-                    SizedBox(
-                      width: double.infinity,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 200,
-                              alignment: Alignment.centerLeft,
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border.all(
-                                  color: Colors.purple,
-                                  width: 2,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  Checkbox(
-                                    value: _isChecked,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _isChecked = value!;
-                                      });
-                                    },
-                                  ),
-                                  const SizedBox(
-                                    width: 5,
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      "Task 1",
-                                      style: GoogleFonts.poppins(
-                                        textStyle: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black,
-                                          decoration: _isChecked == true
-                                              ? TextDecoration.lineThrough
-                                              : TextDecoration.none,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(
-                              width: 5,
-                            ),
-                          ],
-                        ),
-                      ),
+                    formattedActivityOption(),
+                    const SizedBox(
+                      height: 5,
                     ),
+                    formattedListofTask(),
                     const SizedBox(
                       height: 40,
                     ),

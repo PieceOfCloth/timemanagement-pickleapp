@@ -15,9 +15,11 @@ class DetailActivities {
   int? clr_b;
   String str_time;
   String end_time;
+  String? timezone;
   List? tasks;
   List? files;
   List? locations;
+  List? notif;
 
   DetailActivities({
     required this.id_act,
@@ -34,9 +36,11 @@ class DetailActivities {
     this.clr_b,
     required this.str_time,
     required this.end_time,
+    this.timezone,
     this.tasks,
     this.files,
     this.locations,
+    this.notif,
   });
 
   factory DetailActivities.fromJson(Map<String, dynamic> json) {
@@ -55,9 +59,16 @@ class DetailActivities {
       clr_b: json['color_b'] as int?,
       str_time: json['start_time'] as String,
       end_time: json['end_time'] as String,
+      timezone: json['timezone'] as String,
       tasks: json['tasks'],
       files: json['files'],
       locations: json['address'],
+      notif: json['notification'],
     );
+  }
+
+  @override
+  String toString() {
+    return 'DetailActivities(id_act: $id_act, id_sch: $id_sch, title: $title, imp_type: $imp_type, urg_type: $urg_type, rpt_freq: $rpt_freq, rpt_dur: $rpt_dur, cat_name: $cat_name, clr_a: $clr_a, clr_r: $clr_r, clr_g: $clr_g, clr_b: $clr_b, str_time: $str_time, end_time: $end_time, timezone: $timezone, tasks: $tasks, files: $files, locations: $locations, notif: $notif)';
   }
 }

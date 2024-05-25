@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:pickleapp/auth.dart';
 import 'package:pickleapp/screen/class/file.dart';
 import 'package:pickleapp/screen/class/location.dart';
 import 'package:pickleapp/screen/class/notification.dart';
 import 'package:pickleapp/screen/class/task.dart';
+import 'package:pickleapp/screen/page/activity_edit.dart';
 import 'package:pickleapp/theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -149,9 +151,11 @@ class _DetailActivityState extends State<DetailActivity> {
         clr_b: catDoc == null ? null : catDoc['color_b'],
         str_time: strTime,
         end_time: endTimes,
+        timezone: actDoc['timezones'],
         tasks: tasks,
         files: files,
         locations: locs,
+        notif: notifs,
       ),
     };
   }
@@ -549,11 +553,11 @@ class _DetailActivityState extends State<DetailActivity> {
                   width: double.infinity,
                   alignment: Alignment.center,
                   // Wrap with SingleChildScrollView
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: files.isNotEmpty
-                          ? files.map((file) {
+                  child: files.isNotEmpty
+                      ? SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: files.map((file) {
                               return GestureDetector(
                                 onTap: () {
                                   // Handle onTap
@@ -597,12 +601,10 @@ class _DetailActivityState extends State<DetailActivity> {
                                   ),
                                 ),
                               );
-                            }).toList()
-                          : [
-                              const Text("There is no files"),
-                            ], // Corrected here
-                    ),
-                  ),
+                            }).toList(), // Corrected here
+                          ),
+                        )
+                      : const Text("There are no files"),
                 ),
                 // Task Activity - Title
                 Container(
@@ -645,7 +647,11 @@ class _DetailActivityState extends State<DetailActivity> {
                             ).toList(),
                           ),
                         )
-                      : const Text("There is no tasks"),
+                      : Container(
+                          width: double.infinity,
+                          alignment: Alignment.center,
+                          child: const Text("There are no tasks"),
+                        ),
                 ),
                 // Location Activity - Title
                 Container(
@@ -722,22 +728,60 @@ class _DetailActivityState extends State<DetailActivity> {
                             },
                           ).toList(),
                         )
-                      : const Text("There is no locations"),
+                      : Container(
+                          width: double.infinity,
+                          alignment: Alignment.center,
+                          child: const Text("There are no locations"),
+                        ),
                 ),
                 Container(
-                  margin: const EdgeInsets.only(top: 5),
+                  margin: const EdgeInsets.only(top: 20),
                   child: Row(
                     children: [
                       Expanded(
                         child: GestureDetector(
-                          onTap: () {},
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: const Text("Confirm Delete"),
+                                  content: const Text(
+                                      'Are you sure you want to delete this activity?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        deleteSchedule(widget.scheduledID,
+                                            snapshot.data!['activity'].id_act);
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(const SnackBar(
+                                          content: Text('Item deleted'),
+                                        ));
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: const Text('Yes'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
                           child: Container(
                             alignment: Alignment.center,
                             width: double.infinity,
                             height: 50,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
-                              color: const Color.fromARGB(255, 166, 204, 255),
+                              border: Border.all(
+                                width: 1,
+                                color: const Color.fromARGB(255, 3, 0, 66),
+                              ),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -758,25 +802,31 @@ class _DetailActivityState extends State<DetailActivity> {
                       const SizedBox(width: 5),
                       Expanded(
                         child: GestureDetector(
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.of(context).push(MaterialPageRoute(
+                                builder: ((context) => ActivityEdits(
+                                      userID: userID,
+                                      actDetail: snapshot.data!['activity'],
+                                    ))));
+                          },
                           child: Container(
                             alignment: Alignment.center,
                             width: double.infinity,
                             height: 50,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
-                              color: const Color.fromARGB(255, 166, 204, 255),
+                              color: const Color.fromARGB(255, 3, 0, 66),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 const Icon(
                                   Icons.edit,
-                                  color: Colors.black,
+                                  color: Colors.white,
                                 ),
                                 Text(
                                   "Edit Activity",
-                                  style: subHeaderStyle,
+                                  style: subHeaderStyleWhite,
                                 ),
                               ],
                             ),

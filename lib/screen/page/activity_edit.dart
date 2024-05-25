@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:pickleapp/screen/class/activity_detail.dart';
 import 'package:pickleapp/screen/components/button_calm_blue.dart';
 import 'package:pickleapp/screen/components/button_white.dart';
 import 'package:geocoding/geocoding.dart';
@@ -24,10 +26,11 @@ import 'package:pickleapp/screen/components/input_file.dart';
 import 'package:pickleapp/theme.dart';
 
 class ActivityEdits extends StatefulWidget {
-  final AddActivityList activity;
-  final String userID;
+  final AddActivityList? activity;
+  final String? userID;
+  final DetailActivities? actDetail;
   const ActivityEdits(
-      {super.key, required this.activity, required this.userID});
+      {super.key, this.activity, required this.userID, this.actDetail});
 
   @override
   State<ActivityEdits> createState() => _ActivityEditsState();
@@ -85,11 +88,28 @@ class _ActivityEditsState extends State<ActivityEdits> {
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
   String getTasksAsString() {
-    return widget.activity.tasks?.map((task) => task.task).join(",") ?? "";
+    if (widget.activity?.tasks == null) {
+      return widget.actDetail!.tasks!.map((task) => task.task).join(",");
+    } else if (widget.actDetail?.tasks == null) {
+      return widget.activity!.tasks!.map((task) => task.task).join(",");
+    } else {
+      return "";
+    }
   }
 
   String getNotificationAsString() {
-    return widget.activity.notif
+    if (widget.activity?.notif == null) {
+      return widget.actDetail!.notif!
+          .map((notification) => notification.minutes_before)
+          .join(",");
+    } else if (widget.actDetail?.notif == null) {
+      return widget.activity!.notif!
+          .map((notification) => notification.minute)
+          .join(",");
+    } else {
+      return "";
+    }
+    return widget.activity?.notif
             ?.map((notification) => notification.minute)
             .join(".") ??
         "";
@@ -147,7 +167,7 @@ class _ActivityEditsState extends State<ActivityEdits> {
   // Add a new location from an existing location list
   void addLocation(String inpAddress, String latitude, String longitude) {
     setState(() {
-      widget.activity.locations!.add(Locations(
+      widget.activity?.locations!.add(Locations(
         address: inpAddress,
         latitude: double.parse(latitude),
         longitude: double.parse(longitude),
@@ -157,7 +177,7 @@ class _ActivityEditsState extends State<ActivityEdits> {
 
   void removeLocation(int index) {
     setState(() {
-      widget.activity.locations!.removeAt(index);
+      widget.activity?.locations!.removeAt(index);
     });
   }
 
@@ -208,7 +228,7 @@ class _ActivityEditsState extends State<ActivityEdits> {
         await pickedFile.copy(newPath);
 
         setState(() {
-          widget.activity.files!.add(Files(
+          widget.activity?.files!.add(Files(
             name: fileName,
             path: newPath,
           ));
@@ -219,7 +239,7 @@ class _ActivityEditsState extends State<ActivityEdits> {
 
   void removeFile(int index) {
     setState(() {
-      widget.activity.files!.removeAt(index);
+      widget.activity?.files!.removeAt(index);
     });
   }
 
@@ -229,14 +249,14 @@ class _ActivityEditsState extends State<ActivityEdits> {
   void editActivity() {
     setState(() {
       // Edit the activity with the value from controller etc.
-      widget.activity.title = title.text;
-      widget.activity.imp_type = importance;
-      widget.activity.urg_type = urgent;
-      widget.activity.date = calendarDate.text;
-      widget.activity.str_time = startTime.text;
-      widget.activity.timezone = timezoneName ?? "Asia/Jakarta";
-      widget.activity.duration = int.parse(duration.text);
-      widget.activity.tasks = tasks.text.isEmpty
+      widget.activity?.title = title.text;
+      widget.activity?.imp_type = importance;
+      widget.activity?.urg_type = urgent;
+      widget.activity?.date = calendarDate.text;
+      widget.activity?.str_time = startTime.text;
+      widget.activity?.timezone = timezoneName ?? "Asia/Jakarta";
+      widget.activity?.duration = int.parse(duration.text);
+      widget.activity?.tasks = tasks.text.isEmpty
           ? [] // If tasks is empty, set it to an empty list
           : tasks.text
               .split(",")
@@ -245,11 +265,11 @@ class _ActivityEditsState extends State<ActivityEdits> {
                       .trim(), // Trim removes any leading/trailing whitespace
                   status: false)) // Set status to false for all tasks
               .toList();
-      widget.activity.cat = category;
-      widget.activity.rpt_intv = repeatFreq;
-      widget.activity.rpt_dur =
+      widget.activity?.cat = category;
+      widget.activity?.rpt_intv = repeatFreq;
+      widget.activity?.rpt_dur =
           repeatFreq == "Never" ? null : int.parse(repeatDur.text);
-      widget.activity.notif =
+      widget.activity?.notif =
           notification.text.isEmpty || notification.text == ""
               ? []
               : notification.text
@@ -315,28 +335,79 @@ class _ActivityEditsState extends State<ActivityEdits> {
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
+  // Change format time to hh:mm PM/AM
+  String formattedActivityDateOnly(String inptTime) {
+    DateTime time = DateTime.parse(inptTime);
+
+    String formattedTime = DateFormat("dd MMM yyyy").format(time);
+
+    return formattedTime;
+  }
+
+  // Change format time to hh:mm PM/AM
+  String formattedActivityTimeOnly(String inptTime) {
+    DateTime time = DateTime.parse(inptTime);
+
+    String formattedTime = DateFormat("hh:mm a").format(time);
+
+    return formattedTime;
+  }
+
+  String totalDuration(String start, String end) {
+    DateTime startTime = DateTime.parse(start);
+    DateTime endTime = DateTime.parse(end);
+
+    Duration difference = endTime.difference(startTime);
+    int totalMinutes = difference.inMinutes;
+
+    return totalMinutes.toString();
+  }
+
+  /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
+
   @override
   void initState() {
     super.initState();
     getCategoryData();
+    print(widget.actDetail.toString());
 
-    String repDurText = widget.activity.rpt_dur != null &&
-            widget.activity.rpt_dur.toString() != "null"
-        ? widget.activity.rpt_dur.toString()
-        : "";
+    setState(() {
+      String repDurText = widget.activity?.rpt_dur != null &&
+              widget.activity?.rpt_dur.toString() != "null"
+          ? widget.activity!.rpt_dur.toString()
+          : "";
 
-    title = TextEditingController(text: widget.activity.title);
-    calendarDate = TextEditingController(text: widget.activity.date);
-    startTime = TextEditingController(text: widget.activity.str_time);
-    duration = TextEditingController(text: widget.activity.duration.toString());
-    importance = widget.activity.imp_type;
-    urgent = widget.activity.urg_type;
-    tasks = TextEditingController(text: getTasksAsString());
-    category = widget.activity.cat;
-    repeatFreq = widget.activity.rpt_intv;
-    repeatDur = TextEditingController(text: repDurText);
-    notification = TextEditingController(text: getNotificationAsString());
-    timezoneName = widget.activity.timezone;
+      String repDurTextDetail = widget.actDetail?.rpt_dur != null &&
+              widget.actDetail?.rpt_dur.toString() != "null"
+          ? widget.actDetail!.rpt_dur.toString()
+          : "";
+
+      title = TextEditingController(
+          text: widget.activity?.title ?? widget.actDetail?.title ?? "");
+      calendarDate = TextEditingController(
+          text: widget.activity?.date ??
+              formattedActivityDateOnly(widget.actDetail!.str_time) ??
+              "");
+      startTime = TextEditingController(
+          text: widget.activity?.str_time ??
+              formattedActivityTimeOnly(widget.actDetail!.str_time) ??
+              "");
+      duration = TextEditingController(
+          text: widget.activity?.duration.toString() ??
+              totalDuration(
+                  widget.actDetail!.str_time, widget.actDetail!.end_time) ??
+              "");
+      importance = widget.activity?.imp_type ?? widget.actDetail?.imp_type;
+      urgent = widget.activity?.urg_type ?? widget.actDetail?.urg_type;
+      tasks = TextEditingController(text: getTasksAsString());
+      category = widget.activity?.cat ?? widget.actDetail?.cat_name;
+      repeatFreq =
+          widget.activity?.rpt_intv ?? widget.actDetail?.rpt_freq ?? "";
+      repeatDur = TextEditingController(
+          text: repDurText == "" ? repDurTextDetail : repDurText);
+      notification = TextEditingController(text: getNotificationAsString());
+      timezoneName = widget.activity?.timezone ?? widget.actDetail?.timezone;
+    });
   }
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
@@ -787,112 +858,213 @@ class _ActivityEditsState extends State<ActivityEdits> {
                       const SizedBox(
                         width: 5,
                       ),
-                      // Duration
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 6,
-                                  child: Text(
-                                    "Duration",
-                                    style: subHeaderStyleGrey,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                //Tambah informasi (input in a minute)
-                                Expanded(
-                                  flex: 2,
-                                  child: Tooltip(
-                                    key: _tooltipDuration,
-                                    margin: const EdgeInsets.only(
-                                      left: 80,
-                                      right: 20,
-                                    ),
-                                    message:
-                                        "Please enter the duration in minutes (E.g. input '13' means for 13 minutes)",
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        final dynamic tooltip =
-                                            _tooltipDuration.currentState;
-                                        tooltip.ensureTooltipVisible();
-                                      },
-                                      child: const Icon(
-                                        Icons.info,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.only(
-                                left: 10,
-                                right: 10,
-                              ),
-                              alignment: Alignment.centerLeft,
-                              height: 40,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Colors.grey,
-                                  width: 1.0,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
+                      widget.activity != null
+                          ?
+                          // Duration
+                          Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    flex: 6,
-                                    child: TextFormField(
-                                      autofocus: false,
-                                      keyboardType: const TextInputType
-                                          .numberWithOptions(),
-                                      inputFormatters: <TextInputFormatter>[
-                                        FilteringTextInputFormatter.allow(
-                                            RegExp(r'[0-9]')),
-                                      ],
-                                      style: textStyle,
-                                      decoration: InputDecoration(
-                                        hintText:
-                                            "Enter your duration plan (in a minutes)",
-                                        hintStyle: textStyleGrey,
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 6,
+                                        child: Text(
+                                          "Duration",
+                                          style: subHeaderStyleGrey,
+                                        ),
                                       ),
-                                      validator: (v) {
-                                        if (v == null || v.isEmpty) {
-                                          return 'Opps, You need to fill this';
-                                        } else {
-                                          return null;
-                                        }
-                                      },
-                                      controller: duration,
-                                      onChanged: (v) {},
-                                    ),
+                                      const SizedBox(
+                                        width: 5,
+                                      ),
+                                      //Tambah informasi (input in a minute)
+                                      Expanded(
+                                        flex: 2,
+                                        child: Tooltip(
+                                          key: _tooltipDuration,
+                                          margin: const EdgeInsets.only(
+                                            left: 80,
+                                            right: 20,
+                                          ),
+                                          message:
+                                              "Please enter the duration in minutes (E.g. input '13' means for 13 minutes)",
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              final dynamic tooltip =
+                                                  _tooltipDuration.currentState;
+                                              tooltip.ensureTooltipVisible();
+                                            },
+                                            child: const Icon(
+                                              Icons.info,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(
                                     height: 5,
                                   ),
-                                  const Expanded(
-                                    flex: 2,
-                                    child: Icon(
-                                      Icons.timer_outlined,
-                                      color: Colors.grey,
+                                  Container(
+                                    padding: const EdgeInsets.only(
+                                      left: 10,
+                                      right: 10,
+                                    ),
+                                    alignment: Alignment.centerLeft,
+                                    height: 40,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: Colors.grey,
+                                        width: 1.0,
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 6,
+                                          child: TextFormField(
+                                            autofocus: false,
+                                            keyboardType: const TextInputType
+                                                .numberWithOptions(),
+                                            inputFormatters: <TextInputFormatter>[
+                                              FilteringTextInputFormatter.allow(
+                                                  RegExp(r'[0-9]')),
+                                            ],
+                                            style: textStyle,
+                                            decoration: InputDecoration(
+                                              hintText:
+                                                  "Enter your duration plan (in a minutes)",
+                                              hintStyle: textStyleGrey,
+                                            ),
+                                            validator: (v) {
+                                              if (v == null || v.isEmpty) {
+                                                return 'Opps, You need to fill this';
+                                              } else {
+                                                return null;
+                                              }
+                                            },
+                                            controller: duration,
+                                            onChanged: (v) {},
+                                          ),
+                                        ),
+                                        const SizedBox(
+                                          height: 5,
+                                        ),
+                                        const Expanded(
+                                          flex: 2,
+                                          child: Icon(
+                                            Icons.timer_outlined,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : // End time
+                          Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "End Time",
+                                    style: subHeaderStyleGrey,
+                                  ),
+                                  const SizedBox(
+                                    height: 5,
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      showTimePicker(
+                                        context: context,
+                                        initialTime: TimeOfDay.now(),
+                                      ).then((selectedTime) {
+                                        if (selectedTime != null) {
+                                          setState(() {
+                                            // Convert selectedTime to AM/PM format
+                                            String period =
+                                                selectedTime.period ==
+                                                        DayPeriod.am
+                                                    ? 'AM'
+                                                    : 'PM';
+                                            // Extract hours and minutes
+                                            int hours =
+                                                selectedTime.hourOfPeriod;
+                                            int minutes = selectedTime.minute;
+                                            // Format the time as a string
+                                            String formattedTime =
+                                                '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')} $period';
+                                            // Update the text field with the selected time
+                                            startTime.text = formattedTime;
+                                            // ignore: avoid_print
+                                            print(startTime.text);
+                                          });
+                                        }
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.only(
+                                        left: 10,
+                                        right: 10,
+                                      ),
+                                      alignment: Alignment.centerLeft,
+                                      height: 40,
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: Colors.grey,
+                                          width: 1.0,
+                                        ),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            flex: 6,
+                                            child: TextFormField(
+                                              autofocus: false,
+                                              readOnly: true,
+                                              keyboardType: TextInputType.text,
+                                              textCapitalization:
+                                                  TextCapitalization.sentences,
+                                              style: textStyle,
+                                              decoration: InputDecoration(
+                                                hintText:
+                                                    "When do you want to start?",
+                                                hintStyle: textStyleGrey,
+                                              ),
+                                              validator: (v) {
+                                                if (v == null || v.isEmpty) {
+                                                  return 'Opps, You need to fill this';
+                                                } else {
+                                                  return null;
+                                                }
+                                              },
+                                              controller: startTime,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                            width: 5,
+                                          ),
+                                          const Expanded(
+                                            flex: 2,
+                                            child: Icon(
+                                              Icons.access_time,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                   const SizedBox(
@@ -1757,10 +1929,10 @@ class _ActivityEditsState extends State<ActivityEdits> {
                           child: Container(
                             alignment: Alignment.center,
                             width: double.infinity,
-                            height: widget.activity.locations?.isEmpty ?? true
+                            height: widget.activity?.locations?.isEmpty ?? true
                                 ? 50
                                 : 100,
-                            padding: widget.activity.locations?.isEmpty ?? true
+                            padding: widget.activity?.locations?.isEmpty ?? true
                                 ? const EdgeInsets.all(10)
                                 : const EdgeInsets.only(
                                     left: 5,
@@ -1769,50 +1941,106 @@ class _ActivityEditsState extends State<ActivityEdits> {
                             decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(10)),
-                            child: widget.activity.locations?.isEmpty ?? true
+                            child: (widget.activity?.locations?.isEmpty ??
+                                        true) &&
+                                    (widget.actDetail?.locations?.isEmpty ??
+                                        true)
                                 ? Text(
-                                    "There are no activity locations",
+                                    "There are no locations",
                                     style: textStyle,
                                   )
                                 : SingleChildScrollView(
-                                    child: Column(
-                                      children: List.generate(
-                                        widget.activity.locations?.length ?? 0,
-                                        (index) {
-                                          return ListTile(
-                                            title: GestureDetector(
-                                              onTap: () async {
-                                                openGoogleMaps(
-                                                  widget
-                                                      .activity
-                                                      .locations![index]
-                                                      .latitude,
-                                                  widget
-                                                      .activity
-                                                      .locations![index]
-                                                      .longitude,
-                                                );
-                                              },
-                                              child: Text(widget.activity
-                                                  .locations![index].address),
-                                            ),
-                                            trailing: IconButton(
-                                              icon: const Icon(Icons.delete),
-                                              onPressed: () {
-                                                removeLocation(index);
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                        'Location removed'),
+                                    child: (widget.actDetail?.locations
+                                                ?.isEmpty ??
+                                            true)
+                                        ? Column(
+                                            children: List.generate(
+                                              widget.activity?.locations
+                                                      ?.length ??
+                                                  0,
+                                              (index) {
+                                                return ListTile(
+                                                  title: GestureDetector(
+                                                    onTap: () async {
+                                                      openGoogleMaps(
+                                                        widget
+                                                            .activity!
+                                                            .locations![index]
+                                                            .latitude,
+                                                        widget
+                                                            .activity!
+                                                            .locations![index]
+                                                            .longitude,
+                                                      );
+                                                    },
+                                                    child: Text(widget
+                                                        .activity!
+                                                        .locations![index]
+                                                        .address),
+                                                  ),
+                                                  trailing: IconButton(
+                                                    icon: const Icon(
+                                                        Icons.delete),
+                                                    onPressed: () {
+                                                      removeLocation(index);
+                                                      ScaffoldMessenger.of(
+                                                              context)
+                                                          .showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                              'Location removed'),
+                                                        ),
+                                                      );
+                                                    },
                                                   ),
                                                 );
                                               },
                                             ),
-                                          );
-                                        },
-                                      ),
-                                    ),
+                                          )
+                                        : Column(
+                                            children: List.generate(
+                                              widget.actDetail?.locations
+                                                      ?.length ??
+                                                  0,
+                                              (index) {
+                                                return ListTile(
+                                                  title: GestureDetector(
+                                                    onTap: () async {
+                                                      openGoogleMaps(
+                                                        widget
+                                                            .actDetail!
+                                                            .locations![index]
+                                                            .latitude,
+                                                        widget
+                                                            .activity!
+                                                            .locations![index]
+                                                            .longitude,
+                                                      );
+                                                    },
+                                                    child: Text(widget
+                                                        .actDetail!
+                                                        .locations![index]
+                                                        .address),
+                                                  ),
+                                                  trailing: IconButton(
+                                                    icon: const Icon(
+                                                        Icons.delete),
+                                                    onPressed: () {
+                                                      removeLocation(index);
+                                                      ScaffoldMessenger.of(
+                                                              context)
+                                                          .showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                              'Location removed'),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
                                   ),
                           ),
                         ),
@@ -1883,10 +2111,10 @@ class _ActivityEditsState extends State<ActivityEdits> {
                           child: Container(
                             alignment: Alignment.center,
                             width: double.infinity,
-                            height: widget.activity.files?.isEmpty ?? true
+                            height: widget.activity?.files?.isEmpty ?? true
                                 ? 50
                                 : 100,
-                            padding: widget.activity.files?.isEmpty ?? true
+                            padding: widget.activity?.files?.isEmpty ?? true
                                 ? const EdgeInsets.all(10)
                                 : const EdgeInsets.only(
                                     left: 5,
@@ -1895,42 +2123,87 @@ class _ActivityEditsState extends State<ActivityEdits> {
                             decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(10)),
-                            child: widget.activity.files?.isEmpty ?? true
+                            child: (widget.activity?.files?.isEmpty ?? true) &&
+                                    (widget.actDetail?.files?.isEmpty ?? true)
                                 ? Text(
                                     "There are no attachment files",
                                     style: textStyle,
                                   )
                                 : SingleChildScrollView(
-                                    child: Column(
-                                      children: List.generate(
-                                        widget.activity.files?.length ?? 0,
-                                        (index) {
-                                          return ListTile(
-                                            title: GestureDetector(
-                                              onTap: () {
-                                                OpenFile.open(widget.activity
-                                                    .files![index].path);
-                                              },
-                                              child: Text(widget
-                                                  .activity.files![index].name),
-                                            ),
-                                            trailing: IconButton(
-                                              icon: const Icon(Icons.delete),
-                                              onPressed: () {
-                                                removeFile(index);
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  const SnackBar(
-                                                    content:
-                                                        Text('File removed'),
+                                    child: widget.actDetail?.files?.isEmpty ??
+                                            true
+                                        ? Column(
+                                            children: List.generate(
+                                              widget.activity?.files?.length ??
+                                                  0,
+                                              (index) {
+                                                return ListTile(
+                                                  title: GestureDetector(
+                                                    onTap: () {
+                                                      OpenFile.open(widget
+                                                          .activity!
+                                                          .files![index]
+                                                          .path);
+                                                    },
+                                                    child: Text(widget.activity!
+                                                        .files![index].name),
+                                                  ),
+                                                  trailing: IconButton(
+                                                    icon: const Icon(
+                                                        Icons.delete),
+                                                    onPressed: () {
+                                                      removeFile(index);
+                                                      ScaffoldMessenger.of(
+                                                              context)
+                                                          .showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                              'File removed'),
+                                                        ),
+                                                      );
+                                                    },
                                                   ),
                                                 );
                                               },
                                             ),
-                                          );
-                                        },
-                                      ),
-                                    ),
+                                          )
+                                        : Column(
+                                            children: List.generate(
+                                              widget.actDetail?.files?.length ??
+                                                  0,
+                                              (index) {
+                                                return ListTile(
+                                                  title: GestureDetector(
+                                                    onTap: () {
+                                                      OpenFile.open(widget
+                                                          .actDetail!
+                                                          .files![index]
+                                                          .path);
+                                                    },
+                                                    child: Text(widget
+                                                        .actDetail!
+                                                        .files![index]
+                                                        .name),
+                                                  ),
+                                                  trailing: IconButton(
+                                                    icon: const Icon(
+                                                        Icons.delete),
+                                                    onPressed: () {
+                                                      removeFile(index);
+                                                      ScaffoldMessenger.of(
+                                                              context)
+                                                          .showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                              'File removed'),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
                                   ),
                           ),
                         ),
@@ -2028,11 +2301,11 @@ class _ActivityEditsState extends State<ActivityEdits> {
                     ),
                   ),
                   const SizedBox(
-                    height: 5,
+                    height: 20,
                   ),
                   // Button Add
                   MyButtonCalmBlue(
-                    label: "Add A New Activity",
+                    label: "Edit Activity",
                     onTap: () {
                       if (_formKey.currentState != null &&
                           !_formKey.currentState!.validate()) {
