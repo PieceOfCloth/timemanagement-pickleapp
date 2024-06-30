@@ -13,7 +13,6 @@ class _CheckBoxDropdown extends State<CheckBoxDropdown> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
 
     checkList = List<bool>.generate(

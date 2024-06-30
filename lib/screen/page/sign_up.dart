@@ -1,15 +1,12 @@
-import 'package:crypto/crypto.dart';
+// ignore_for_file: use_build_context_synchronously, avoid_print
+
 import 'package:flutter/material.dart';
-// import 'package:flutter/rendering.dart';
+import 'package:pickleapp/screen/components/alert_information.dart';
 import 'package:pickleapp/theme.dart';
-import 'dart:convert';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// import 'dart:typed_data';
 import 'package:flutter/services.dart';
-
-import 'package:pickleapp/screen/components/button_calm_blue.dart';
 
 class MySignUp extends StatefulWidget {
   const MySignUp({super.key});
@@ -19,24 +16,27 @@ class MySignUp extends StatefulWidget {
 }
 
 class _MySignUpState extends State<MySignUp> {
-  final _formKey = GlobalKey<FormState>();
+  final formKey = GlobalKey<FormState>();
+  final GlobalKey _tooltipPassword = GlobalKey();
 
-  final RegExp _emailRegex =
+  final RegExp emailRegex =
       RegExp(r"^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com)$");
-  final RegExp _lowCasePwd = RegExp(r'[a-z]');
-  final RegExp _upperCasePwd = RegExp(r'[A-Z]');
-  final RegExp _numPwd = RegExp(r'\d');
-  final RegExp _symbolPwd = RegExp(r'[!@#$%^&*(),.?":{}|<>]');
+  final RegExp newPwdPattern = RegExp(
+      r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?':{}|<>]).{8,}$");
 
-  final TextEditingController _email = TextEditingController();
-  final TextEditingController _name = TextEditingController();
-  final TextEditingController _password = TextEditingController();
-  final TextEditingController _rptPassword = TextEditingController();
-  String _path = "";
-  String _createdAt = "";
-  String _updateAt = "";
+  TextEditingController email = TextEditingController();
+  TextEditingController name = TextEditingController();
+  TextEditingController password = TextEditingController();
+  TextEditingController rptPassword = TextEditingController();
 
-  Future<void> submit() async {
+  String path = "";
+  String createdAt = "";
+  String updateAt = "";
+
+  bool obsecurePassword = true;
+  bool obsecureRptPassword = true;
+
+  Future<void> setUserAccount() async {
     try {
       showDialog(
         context: context,
@@ -47,97 +47,71 @@ class _MySignUpState extends State<MySignUp> {
 
       UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _email.text,
-        password: encryptPwd(_password.text),
+        email: email.text,
+        password: password.text,
       );
 
       User user = userCredential.user!;
 
-      // Simpan gambar profil default di Firebase Storage
-      String defaultProfilePicUrl = await uploadDefaultProfilePic(user.uid);
+      String fileName = '${user.uid}.jpg';
+      String url = 'user_profile/$fileName';
+      Reference storageReference =
+          FirebaseStorage.instance.ref().child('user_profile').child(fileName);
 
-      // Simpan URL gambar profil default di Firebase Database
+      // Load default profile picture from assets as ByteData
+      ByteData defaultImageData = await rootBundle.load(path);
+      // Convert ByteData to Uint8List
+      Uint8List imageDataUint8List = defaultImageData.buffer.asUint8List();
+      // Upload gambar ke Firebase Storage
+      await storageReference.putData(imageDataUint8List);
+
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'email': _email.text,
+        'email': email.text,
         'created_at': FieldValue.serverTimestamp(),
         'update_at': FieldValue.serverTimestamp(),
-        'name': _name.text,
-        'password': encryptPwd(_password.text),
-        'path': defaultProfilePicUrl,
+        'name': name.text.isEmpty ? email.text.split('@')[0] : name.text,
+        'path': url,
       });
 
-      // ignore: use_build_context_synchronously
-      Navigator.of(context).pop();
-
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              "Your account has been successfully registered. Please back to the login page."),
-        ),
-      );
+      await user.sendEmailVerification();
 
       setState(() {
-        _email.clear();
-        _name.clear();
-        _password.clear();
-        _rptPassword.clear();
+        email.clear();
+        name.clear();
+        password.clear();
+        rptPassword.clear();
       });
-    } on FirebaseAuthException catch (e) {
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.code),
-        ),
+
+      Navigator.of(context).pop();
+      Navigator.of(context).pop();
+      AlertInformation.showDialogBox(
+        context: context,
+        title: "Verifikasi Akun Baru Kamu",
+        message:
+            "Kami telah mengirimkan pesan untuk verifikasi akun ke email kamu. Silahkan cek email kamu dan lakukan verifikasi jika ingin menggunakan akun kamu. Terima kasih!",
       );
+
+      FirebaseAuth.instance.signOut();
+    } on FirebaseAuthException catch (e) {
+      Navigator.of(context).pop();
+      if (e.code == 'email-already-in-use') {
+        AlertInformation.showDialogBox(
+          context: context,
+          title: "Email Telah Digunakan",
+          message:
+              "Email yang kamu masukkan sudah pernah didaftarkan di aplikasi ini. Silahkan masukkan email baru. Terima kasih!",
+        );
+      } else if (e.code == 'invalid-email') {
+        AlertInformation.showDialogBox(
+          context: context,
+          title: 'Email Tidak Valid',
+          message:
+              "Email yang kamu masukkan tidak valid. Silahkan masukkan email yang benar. Terima kasih!",
+        );
+      } else {
+        print(e.code);
+      }
     }
-    // final response = await http.post(
-    //   Uri.parse("http://192.168.1.134:8012/picklePHP/signUp.php"),
-    //   body: {
-    //     "name": _name.text,
-    //     "path": _path,
-    //     "email": _email.text,
-    //     "password": encryptPwd(_password.text),
-    //     "created_at": _createdAt,
-    //     "updated_at": _updateAt,
-    //   },
-    // );
-    // if (response.statusCode == 200) {
-    //   Map json = jsonDecode(response.body);
-    //   if (json["result"] == "success") {
-    //     if (!mounted) return;
-    //     ScaffoldMessenger.of(context).showSnackBar(
-    //       const SnackBar(
-    //         content: Text("Sukses Menambah Data"),
-    //       ),
-    //     );
-    //   }
-    // } else {
-    //   throw Exception("Failed to read API");
-    // }
-  }
-
-  // Function to upload default profile picture to Firebase Storage
-  Future<String> uploadDefaultProfilePic(String userId) async {
-    // Save default profile picture to Firebase Storage with the appropriate file name and path
-    String fileName = '$userId.jpg';
-    Reference storageReference =
-        FirebaseStorage.instance.ref().child('user_profile').child(fileName);
-
-    // Load default profile picture from assets as ByteData
-    ByteData defaultImageData = await rootBundle.load(_path);
-
-    // Convert ByteData to Uint8List
-    Uint8List imageDataUint8List = defaultImageData.buffer.asUint8List();
-
-    // Upload gambar ke Firebase Storage
-    UploadTask uploadTask = storageReference.putData(imageDataUint8List);
-
-    // Wait until the upload process is completed and get the image URL
-    TaskSnapshot taskSnapshot = await uploadTask;
-    String downloadUrl = await taskSnapshot.ref.getDownloadURL();
-
-    return downloadUrl;
   }
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
@@ -145,9 +119,7 @@ class _MySignUpState extends State<MySignUp> {
   @override
   void initState() {
     super.initState();
-    _path = "assets/Default_Photo_Profile.png";
-    _createdAt = "${DateTime.now()}";
-    _updateAt = "${DateTime.now()}";
+    path = "assets/Default_Photo_Profile.png";
   }
 
   @override
@@ -155,349 +127,351 @@ class _MySignUpState extends State<MySignUp> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Sign Up",
-          style: screenTitleStyle,
+          "Pendaftaran Akun",
+          style: headerStyleBold,
         ),
       ),
-      body: Form(
-        key: _formKey,
-        child: Container(
-          margin: const EdgeInsets.all(20),
-          alignment: Alignment.center,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Input text email
-                // ignore: avoid_unnecessary_containers
-                Container(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Email",
-                        style: subHeaderStyle,
-                      ),
-                      const SizedBox(
-                        height: 5,
-                      ),
-                      Container(
-                        padding: const EdgeInsets.only(
-                          left: 10,
-                          right: 10,
+      body: SafeArea(
+        child: LayoutBuilder(builder: (context, constraints) {
+          return Form(
+            key: formKey,
+            child: Container(
+              margin: const EdgeInsets.all(20),
+              alignment: Alignment.center,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Input text email
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Email",
+                          style: textStyle,
                         ),
-                        alignment: Alignment.centerLeft,
-                        height: 40,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.black,
-                            width: 1.0,
+                        const SizedBox(
+                          height: 5,
+                        ),
+                        Container(
+                          padding: const EdgeInsets.only(
+                            left: 10,
+                            right: 10,
                           ),
-                          borderRadius: BorderRadius.circular(10),
+                          alignment: Alignment.centerLeft,
+                          width: constraints.maxWidth,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.black,
+                              width: 1.0,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  // readOnly: widget == null ? false : true,
+                                  keyboardType: TextInputType.emailAddress,
+                                  // textCapitalization: TextCapitalization.sentences,
+                                  autofocus: false,
+                                  // style: caption1Style,
+                                  controller: email,
+                                  decoration: InputDecoration(
+                                    hintText: "Masukkan email baru kamu disini",
+                                    hintStyle: textStyleGrey,
+                                  ),
+                                  validator: (value) {
+                                    if (value == "" || value == null) {
+                                      return 'Silahkan isi email baru kamu.';
+                                    } else {
+                                      return null;
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: Row(
+                      ],
+                    ),
+                    const SizedBox(
+                      height: 10,
+                    ),
+                    // Input text name
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Nama Panggilan",
+                          style: textStyle,
+                        ),
+                        const SizedBox(
+                          height: 5,
+                        ),
+                        Container(
+                          padding: const EdgeInsets.only(
+                            left: 10,
+                            right: 10,
+                          ),
+                          alignment: Alignment.centerLeft,
+                          width: constraints.maxWidth,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.black,
+                              width: 1.0,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  // readOnly: widget == null ? false : true,
+                                  keyboardType: TextInputType.text,
+                                  textCapitalization:
+                                      TextCapitalization.sentences,
+                                  autofocus: false,
+                                  // style: caption1Style,
+                                  controller: name,
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        "Masukkan nama panggilanmu disini",
+                                    hintStyle: textStyleGrey,
+                                  ),
+                                  validator: null,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(
+                      height: 10,
+                    ),
+                    // Input text password
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
                             Expanded(
-                              child: TextFormField(
-                                // readOnly: widget == null ? false : true,
-                                keyboardType: TextInputType.emailAddress,
-                                // textCapitalization: TextCapitalization.sentences,
-                                autofocus: false,
-                                controller: _email,
+                              flex: 6,
+                              child: Text(
+                                "Kata sandi baru",
                                 style: textStyle,
-                                decoration: InputDecoration(
-                                  hintText: "Enter your email here",
-                                  hintStyle: textStyle,
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 5,
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Tooltip(
+                                key: _tooltipPassword,
+                                margin: const EdgeInsets.only(
+                                  left: 80,
+                                  right: 20,
                                 ),
-                                validator: (value) {
-                                  if (_email.text == "" ||
-                                      _email.text.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Please email is a must, for account sign in purpose!'),
-                                      ),
-                                    );
-                                  } else if (_emailRegex
-                                      .hasMatch(_email.text)) {
-                                    return null;
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content:
-                                            Text('Please enter a valid email!'),
-                                      ),
-                                    );
-                                  }
-                                  return null;
-                                },
+                                message:
+                                    'Mohon untuk memasukkan kata sandi yang terdiri dari, huruf kecil (a-z), huruf besar (A-Z), nomor(0-9), and satu simbol (!@#%^\$&*(),.?":{}|<>).',
+                                child: GestureDetector(
+                                  onTap: () {
+                                    final dynamic tooltip =
+                                        _tooltipPassword.currentState;
+                                    tooltip.ensureTooltipVisible();
+                                  },
+                                  child: const Icon(
+                                    Icons.info,
+                                    color: Colors.black,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Input text name
-                // ignore: avoid_unnecessary_containers
-                Container(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Preferred name",
-                        style: subHeaderStyle,
-                      ),
-                      const SizedBox(
-                        height: 5,
-                      ),
-                      Container(
-                        padding: const EdgeInsets.only(
-                          left: 10,
-                          right: 10,
+                        const SizedBox(
+                          height: 5,
                         ),
-                        alignment: Alignment.centerLeft,
-                        height: 40,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.black,
-                            width: 1.0,
+                        Container(
+                          padding: const EdgeInsets.only(
+                            left: 10,
+                            right: 10,
                           ),
-                          borderRadius: BorderRadius.circular(10),
+                          alignment: Alignment.centerLeft,
+                          width: constraints.maxWidth,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.black,
+                              width: 1.0,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  keyboardType: TextInputType.text,
+                                  autofocus: false,
+                                  obscureText: obsecurePassword,
+                                  controller: password,
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        "Masukkan kata sandi baru kamu disini",
+                                    hintStyle: textStyleGrey,
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        obsecurePassword
+                                            ? Icons.visibility
+                                            : Icons.visibility_off,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          obsecurePassword = !obsecurePassword;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == "" || value == null) {
+                                      return 'Silahkan isi kata sandi baru kamu.';
+                                    } else if (value.length < 8) {
+                                      return 'Kata sandi minimal memiliki 8 karakter.';
+                                    } else {
+                                      return null;
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(
+                      height: 10,
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Ulangi kata sandi",
+                          style: textStyle,
+                        ),
+                        const SizedBox(
+                          height: 5,
+                        ),
+                        Container(
+                          padding: const EdgeInsets.only(
+                            left: 10,
+                            right: 10,
+                          ),
+                          alignment: Alignment.centerLeft,
+                          width: constraints.maxWidth,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.black,
+                              width: 1.0,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  keyboardType: TextInputType.text,
+                                  autofocus: false,
+                                  controller: rptPassword,
+                                  obscureText: obsecureRptPassword,
+                                  decoration: InputDecoration(
+                                    hintText: "Ulangi kata sandi baru kamu",
+                                    hintStyle: textStyleGrey,
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        obsecureRptPassword
+                                            ? Icons.visibility
+                                            : Icons.visibility_off,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          obsecureRptPassword =
+                                              !obsecureRptPassword;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == "" || value == null) {
+                                      return 'Silahkan ulangi kata sandi kamu.';
+                                    } else if (password.text !=
+                                        rptPassword.text) {
+                                      return "Kata sandi kamu tidak sesuai.";
+                                    } else {
+                                      return null;
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(
+                      height: 40,
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        if (formKey.currentState != null &&
+                            !formKey.currentState!.validate()) {
+                          return;
+                        } else {
+                          setUserAccount();
+                        }
+                      },
+                      child: Container(
+                        alignment: Alignment.center,
+                        width: constraints.maxWidth,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          color: const Color.fromARGB(255, 3, 0, 66),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Expanded(
-                              child: TextFormField(
-                                // readOnly: widget == null ? false : true,
-                                keyboardType: TextInputType.text,
-                                textCapitalization:
-                                    TextCapitalization.sentences,
-                                autofocus: false,
-                                controller: _name,
-                                style: textStyle,
-                                decoration: InputDecoration(
-                                  hintText: "Enter your preferred name here!",
-                                  hintStyle: textStyle,
-                                ),
-                                validator: null,
-                              ),
+                            const Icon(
+                              Icons.email,
+                              color: Colors.white,
+                            ), // Logout icon
+                            const SizedBox(
+                                width: 8.0), // Space between icon and text
+                            Text(
+                              'Daftar Akun',
+                              style: textStyleBoldWhite,
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(
-                  height: 10,
-                ),
-                // Input text password
-                // ignore: avoid_unnecessary_containers
-                Container(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Password",
-                        style: subHeaderStyle,
-                      ),
-                      const SizedBox(
-                        height: 5,
-                      ),
-                      Container(
-                        padding: const EdgeInsets.only(
-                          left: 10,
-                          right: 10,
-                        ),
-                        alignment: Alignment.centerLeft,
-                        height: 40,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.black,
-                            width: 1.0,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                // readOnly: widget == null ? false : true,
-                                keyboardType: TextInputType.text,
-                                textCapitalization:
-                                    TextCapitalization.sentences,
-                                autofocus: false,
-                                controller: _password,
-                                style: textStyle,
-                                obscureText: true,
-                                decoration: InputDecoration(
-                                  hintText: "Enter your password here",
-                                  hintStyle: textStyle,
-                                ),
-                                validator: (value) {
-                                  if (_password.text == "" ||
-                                      _password.text.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Please password is a must, for account sign in purpose!'),
-                                      ),
-                                    );
-                                  } else if (_password.text.length < 8) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Please, password must have a minimum of 8 character!'),
-                                      ),
-                                    );
-                                  } else if (!_lowCasePwd
-                                          .hasMatch(_password.text) ||
-                                      !_upperCasePwd.hasMatch(_password.text) ||
-                                      !_numPwd.hasMatch(_password.text) ||
-                                      !_symbolPwd.hasMatch(_password.text)) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Please, password must have at least a lowercase (a-z), uppercase (A-Z), number(0-9), and symbol (!@#%^\$&*(),.?":{}|<>)!'),
-                                      ),
-                                    );
-                                  } else {
-                                    return null;
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(
-                  height: 10,
-                ),
-                // Input text repat password
-                // ignore: avoid_unnecessary_containers
-                Container(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Repeat password",
-                        style: subHeaderStyle,
-                      ),
-                      const SizedBox(
-                        height: 5,
-                      ),
-                      Container(
-                        padding: const EdgeInsets.only(
-                          left: 10,
-                          right: 10,
-                        ),
-                        alignment: Alignment.centerLeft,
-                        height: 40,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.black,
-                            width: 1.0,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                // readOnly: widget == null ? false : true,
-                                keyboardType: TextInputType.text,
-                                textCapitalization:
-                                    TextCapitalization.sentences,
-                                autofocus: false,
-                                controller: _rptPassword,
-                                style: textStyle,
-                                obscureText: true,
-                                decoration: InputDecoration(
-                                  hintText: "Repeat your password above",
-                                  hintStyle: textStyle,
-                                ),
-                                onChanged: (value) {},
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Please repeat password is a must!'),
-                                      ),
-                                    );
-                                  } else if (value != _password.text) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            "Please, your password isn't match!"),
-                                      ),
-                                    );
-                                  } else {
-                                    return null;
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(
-                  height: 10,
-                ),
-                const SizedBox(
-                  height: 30,
-                ),
-                MyButtonCalmBlue(
-                  label: "Submit",
-                  onTap: () {
-                    if (_formKey.currentState != null &&
-                        !_formKey.currentState!.validate()) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("None"),
-                        ),
-                      );
-                    } else {
-                      if (_name.text.isEmpty) {
-                        _name.text = "Pickle";
-                      }
-                      // ignore: avoid_print
-                      print(
-                        "${_email.text}, ${_name.text}, ${_password.text}, ${_rptPassword.text},${_path},${_createdAt},${_updateAt}",
-                      );
-                      submit();
-                    }
-                  },
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        }),
       ),
     );
   }
 }
 
 // Encrypt password dengan SHA-256 hash
-String encryptPwd(String pwd) {
-  // Convert password ke SHA-256 hash
-  var bytes = utf8.encode(pwd);
-  var hash = sha256.convert(bytes);
+// String encryptPwd(String pwd) {
+//   // Convert password ke SHA-256 hash
+//   var bytes = utf8.encode(pwd);
+//   var hash = sha256.convert(bytes);
 
-  // Convert encrypt pwd ke string
-  return hash.toString();
-}
+//   // Convert encrypt pwd ke string
+//   return hash.toString();
+// }

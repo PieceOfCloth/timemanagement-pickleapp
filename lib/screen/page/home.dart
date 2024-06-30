@@ -1,15 +1,24 @@
+// ignore_for_file: use_build_context_synchronously, avoid_print
+
+import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:date_picker_timeline/date_picker_timeline.dart';
 import 'package:pickleapp/screen/class/location.dart';
+import 'package:pickleapp/screen/class/profile.dart';
+import 'package:pickleapp/screen/components/alert_information.dart';
+import 'package:pickleapp/screen/services/activity_task_state.dart';
 import 'package:pickleapp/screen/page/detail_activity.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:pickleapp/theme.dart';
 import 'package:pickleapp/screen/class/activity_list.dart';
-import 'package:pickleapp/screen/fabexpandable/add_activities.dart';
+import 'package:pickleapp/screen/page/add_activities.dart';
 import 'package:pickleapp/auth.dart';
+import 'package:provider/provider.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 final scaffoldKey = GlobalKey<ScaffoldMessengerState>();
 
@@ -23,8 +32,10 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   String _selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
-  final String _todayDate =
-      DateFormat("dd MMM yyyy").format(DateTime.now()).toString();
+  DateTime _selectedDay = DateTime.now();
+  DateTime _focusedDay = DateTime.now();
+
+  late List<DateTime> activeDates;
 
   String message = "";
   String scheduledID = "";
@@ -33,6 +44,14 @@ class _HomeState extends State<Home> {
   ActivityList? aLS2;
   late Future<List<ActivityList>> activityListFuture;
   Timer? _timer;
+  CalendarFormat calendarFormat = CalendarFormat.week;
+
+  void _initializeActiveDates() {
+    // Create a list of active dates, for example, the past 365 days
+    activeDates = List<DateTime>.generate(365, (index) {
+      return DateTime.now().subtract(Duration(days: index));
+    });
+  }
 
   /* ------------------------------------------------------------------------------------------------------------------- */
 
@@ -41,6 +60,35 @@ class _HomeState extends State<Home> {
     // Cancel the timer in the dispose method
     _timer?.cancel();
     super.dispose();
+  }
+
+  void showInfoDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext ctxt) {
+        return AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: subHeaderStyleBold,
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  Navigator.of(ctxt).pop();
+                },
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: textStyle,
+          ),
+        );
+      },
+    );
   }
 
   /* ------------------------------------------------------------------------------------------------------------------- */
@@ -59,15 +107,39 @@ class _HomeState extends State<Home> {
   }
 
   // For determine priority high medium or so on
-  String getPriority(important, urgent) {
+  String getPriorityTypeOnly(important, urgent) {
     if (important == "Important" && urgent == "Urgent") {
-      return "Golf (Critical Priority)";
+      return "Utama";
     } else if (important == "Important" && urgent == "Not Urgent") {
-      return "Pebble (High Priority)";
+      return "Tinggi";
     } else if (important == "Not Important" && urgent == "Urgent") {
-      return "Sand (Medium Priority)";
+      return "Sedang";
     } else {
-      return "Water (Low Priority)";
+      return "Rendah";
+    }
+  }
+
+  Color getPriorityColorByPriorityType(String priorityType) {
+    if (priorityType == "Utama") {
+      return Colors.red;
+    } else if (priorityType == "Tinggi") {
+      return Colors.yellow;
+    } else if (priorityType == "Sedang") {
+      return Colors.green;
+    } else {
+      return Colors.blue;
+    }
+  }
+
+  String getPriorityImageByPriorityType(String priorityType) {
+    if (priorityType == "Utama") {
+      return 'assets/golfBall_1.png';
+    } else if (priorityType == "Tinggi") {
+      return 'assets/pebbles_1.png';
+    } else if (priorityType == "Sedang") {
+      return 'assets/sand_1.png';
+    } else {
+      return 'assets/water_1.png';
     }
   }
 
@@ -171,18 +243,17 @@ class _HomeState extends State<Home> {
           }
 
           ActivityList activity = ActivityList(
-            id_activity: activityId,
-            id_scheduled: scheduleDoc.id,
+            idActivity: activityId,
+            idScheduled: scheduleDoc.id,
             title: activityData['title'] as String,
-            start_time: actualStartTimeString!,
-            end_time: actualEndTimeString!,
-            important_type: activityData['important_type'] as String,
-            urgent_type: activityData['urgent_type'] as String,
-            color_a: categoryData != null ? categoryData['color_a'] as int : 0,
-            color_r: categoryData != null ? categoryData['color_r'] as int : 0,
-            color_g: categoryData != null ? categoryData['color_g'] as int : 0,
-            color_b: categoryData != null ? categoryData['color_b'] as int : 0,
-            timezone: "Test",
+            startTime: actualStartTimeString!,
+            endTime: actualEndTimeString!,
+            importantType: activityData['important_type'] as String,
+            urgentType: activityData['urgent_type'] as String,
+            colorA: categoryData != null ? categoryData['color_a'] as int : 0,
+            colorR: categoryData != null ? categoryData['color_r'] as int : 0,
+            colorG: categoryData != null ? categoryData['color_g'] as int : 0,
+            colorB: categoryData != null ? categoryData['color_b'] as int : 0,
             locations: locations,
           );
 
@@ -196,282 +267,817 @@ class _HomeState extends State<Home> {
     return activitiesList;
   }
 
-  void _fetchActivityList() async {
-    // Fetch activities list from your function
-    List<ActivityList> activities = await getActivityList();
+  Future<ProfileClass?> getProfile() async {
+    final userDoc =
+        await FirebaseFirestore.instance.collection('users').doc(userID).get();
 
-    // Update state
-    setState(() {
-      actList = activities;
-    });
+    if (userDoc.exists) {
+      var userData = userDoc.data()!;
+      String imagePath = userData['path'];
+      String imageUrl =
+          await FirebaseStorage.instance.ref(imagePath).getDownloadURL();
+
+      return ProfileClass(
+        email: userData['email'],
+        name: userData['name'],
+        path: imageUrl,
+      );
+    }
+    return null;
+  }
+
+  Future<Map<String, int>> getActivitiesPerPriority() async {
+    DateTime dateTime = DateTime.parse(_selectedDate);
+    Timestamp startOfDay = Timestamp.fromDate(dateTime);
+    Timestamp endOfDay =
+        Timestamp.fromDate(dateTime.add(const Duration(days: 1)));
+
+    final schedSnap = await FirebaseFirestore.instance
+        .collection("scheduled_activities")
+        .where("actual_start_time", isGreaterThanOrEqualTo: startOfDay)
+        .where("actual_start_time", isLessThan: endOfDay)
+        .get();
+
+    Map<String, int> totalPriority = {};
+
+    for (var doc in schedSnap.docs) {
+      String activityId = doc["activities_id"];
+
+      DocumentSnapshot actSnap = await FirebaseFirestore.instance
+          .collection("activities")
+          .doc(activityId)
+          .get();
+
+      Map<String, dynamic> actData = actSnap.data() as Map<String, dynamic>;
+      if (actData['user_id'] == userID) {
+        String priorityType = getPriorityTypeOnly(
+            actData["important_type"], actData["urgent_type"]);
+
+        if (totalPriority.containsKey(priorityType)) {
+          totalPriority[priorityType] = totalPriority[priorityType]! + 1;
+        } else {
+          totalPriority[priorityType] = 1;
+        }
+      }
+    }
+    return totalPriority;
+  }
+
+  Future<void> deleteScheduledActivity(
+      String scheduleID, String activityID) async {
+    try {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('scheduled_activities')
+          .where('activities_id', isEqualTo: activityID)
+          .get();
+
+      int count = querySnapshot.docs.length;
+
+      DocumentReference schedRef = FirebaseFirestore.instance
+          .collection('scheduled_activities')
+          .doc(scheduleID);
+
+      DocumentReference actRef =
+          FirebaseFirestore.instance.collection('activities').doc(activityID);
+
+      DocumentSnapshot schedSnap = await schedRef.get();
+
+      if (schedSnap.exists && schedSnap['activities_id'] == activityID) {
+        if (count == 1) {
+          await actRef.delete();
+          await schedRef.delete();
+
+          QuerySnapshot taskSnap = await FirebaseFirestore.instance
+              .collection('tasks')
+              .where('activities_id', isEqualTo: activityID)
+              .get();
+
+          for (DocumentSnapshot doc in taskSnap.docs) {
+            await FirebaseFirestore.instance
+                .collection('tasks')
+                .doc(doc.id)
+                .delete();
+          }
+
+          QuerySnapshot notifSnap = await FirebaseFirestore.instance
+              .collection('notifications')
+              .where('scheduled_activities_id', isEqualTo: scheduleID)
+              .get();
+
+          for (DocumentSnapshot doc in notifSnap.docs) {
+            await FirebaseFirestore.instance
+                .collection('notifications')
+                .doc(doc.id)
+                .delete();
+            await AwesomeNotifications().cancel(doc.id.hashCode);
+          }
+
+          QuerySnapshot logSnap = await FirebaseFirestore.instance
+              .collection('logs')
+              .where('activities_id', isEqualTo: activityID)
+              .get();
+
+          for (DocumentSnapshot doc in logSnap.docs) {
+            await FirebaseFirestore.instance
+                .collection('logs')
+                .doc(doc.id)
+                .delete();
+          }
+
+          QuerySnapshot locSnap = await FirebaseFirestore.instance
+              .collection('locations')
+              .where('activities_id', isEqualTo: activityID)
+              .get();
+
+          for (DocumentSnapshot doc in locSnap.docs) {
+            await FirebaseFirestore.instance
+                .collection('locations')
+                .doc(doc.id)
+                .delete();
+          }
+
+          QuerySnapshot fileSnap = await FirebaseFirestore.instance
+              .collection('files')
+              .where('activities_id', isEqualTo: activityID)
+              .get();
+
+          for (DocumentSnapshot doc in fileSnap.docs) {
+            await FirebaseStorage.instance.ref(doc['path']).delete();
+
+            await FirebaseFirestore.instance
+                .collection('files')
+                .doc(doc.id)
+                .delete();
+          }
+
+          ListResult listFile = await FirebaseStorage.instance
+              .ref("user_files/$activityID")
+              .listAll();
+
+          for (Reference file in listFile.items) {
+            await file.delete();
+          }
+        } else {
+          QuerySnapshot notifSnap = await FirebaseFirestore.instance
+              .collection('notifications')
+              .where('scheduled_activities_id', isEqualTo: scheduleID)
+              .get();
+
+          for (DocumentSnapshot doc in notifSnap.docs) {
+            await FirebaseFirestore.instance
+                .collection('notifications')
+                .doc(doc.id)
+                .delete();
+          }
+
+          await schedRef.delete();
+        }
+
+        Navigator.of(context).pop();
+        Navigator.of(context).pop();
+
+        AlertInformation.showDialogBox(
+          context: context,
+          title: "Deleted Schedule",
+          message: "Successfully deleted the schedule activity, Thank you.",
+        );
+      } else {
+        Navigator.of(context).pop();
+        Navigator.of(context).pop();
+
+        AlertInformation.showDialogBox(
+          context: context,
+          title: "Undeleted Schedule",
+          message: "The schedule activity unsuccessfully deleted.",
+        );
+        print('Document not found or activities_id does not match');
+      }
+    } catch (e) {
+      Navigator.of(context).pop();
+      Navigator.of(context).pop();
+
+      AlertInformation.showDialogBox(
+        context: context,
+        title: "E",
+        message: "E",
+      );
+    }
   }
 
   /* ------------------------------------------------------------------------------------------------------------------- */
 
-  // Activity List
-  Widget formattedListOfActivities(List<ActivityList> activList) {
-    if (activList.isEmpty) {
-      return Container(
-        margin: const EdgeInsets.only(
-          bottom: 10,
-        ),
-        width: double.infinity,
-        height: double.infinity,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: const Color.fromARGB(255, 255, 170, 0),
-        ),
-        child: Text(
-          "You're free on this day, Enjoy :)",
-          style: headerStyle,
-        ),
-      );
-    } else {
-      return ListView.builder(
-        itemCount: activList.length,
-        itemBuilder: (BuildContext context, int index) {
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DetailActivity(
-                    scheduledID: activList[index].id_scheduled,
-                  ),
-                ),
-              );
-              // print(activList[index].id_scheduled);
-            },
-            child: Column(
-              children: [
-                // Left (number) n Right (container)
-                Row(
-                  children: [
-                    // Left
-                    Expanded(
-                      flex: 1,
-                      child: Container(
-                        alignment: Alignment.center,
-                        child: Text(
-                          "${index + 1}",
-                          style: headerStyle,
-                        ),
+  Widget profileTop(BuildContext context) {
+    return FutureBuilder<ProfileClass?>(
+      future: getProfile(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          );
+        } else if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error: ${snapshot.error}',
+              style: textStyleWhite,
+            ),
+          );
+        } else if (!snapshot.hasData || snapshot.data == null) {
+          return Center(
+            child: Text(
+              'Profil Pengguna Tidak Ditemukan',
+              style: textStyleWhite,
+            ),
+          );
+        } else {
+          ProfileClass user = snapshot.data!;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 1,
+                      ),
+                      image: DecorationImage(
+                        image: NetworkImage(user.path),
+                        fit: BoxFit.cover,
                       ),
                     ),
-                    // Right
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: double.infinity,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Halo,",
+                      style: subHeaderStyleGrey,
+                    ),
+                    Text(
+                      user.name,
+                      style: screenTitleStyleWhite,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+      },
+    );
+  }
+
+  Widget formattedTotalActivitiesPerPriority(BuildContext context) {
+    return FutureBuilder<Map<String, int>>(
+      future: getActivitiesPerPriority(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SizedBox(
+            width: MediaQuery.of(context).size.width,
+            child: const Center(
+              child: CircularProgressIndicator(color: Colors.black),
+            ),
+          );
+        } else if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error: ${snapshot.error}',
+              // style: caption1Style,
+            ),
+          );
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Row(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(
+                  right: 5,
+                ),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.all(10),
+                width: MediaQuery.of(context).size.width * 0.35,
+                height: MediaQuery.of(context).size.width * 0.2,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: const Color.fromARGB(255, 3, 0, 66),
+                  ),
+                  color: getPriorityColorByPriorityType("Utama"),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
                     Expanded(
-                      flex: 9,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          color: Color.fromARGB(
-                            activList[index].color_a == 0
-                                ? 255
-                                : activList[index].color_a,
-                            activList[index].color_r == 0
-                                ? 255
-                                : activList[index].color_r,
-                            activList[index].color_g == 0
-                                ? 170
-                                : activList[index].color_g,
-                            activList[index].color_b == 0
-                                ? 0
-                                : activList[index].color_b,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Align(
-                                  alignment: Alignment.topLeft,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(20),
-                                        color: const Color.fromARGB(
-                                            255, 3, 0, 66)),
-                                    padding: const EdgeInsets.all(5),
-                                    child: Text(
-                                      getPriority(
-                                        activList[index].important_type,
-                                        activList[index].urgent_type,
-                                      ),
-                                      style: textStyleWhite,
-                                    ),
-                                  ),
-                                ),
-                                Align(
-                                  alignment: Alignment.topRight,
-                                  child: PopupMenuButton(
-                                      itemBuilder: (BuildContext context) => [
-                                            const PopupMenuItem(
-                                              value: 'delete',
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons.delete,
-                                                      color: Colors.black),
-                                                  SizedBox(width: 8),
-                                                  Text('Delete'),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                      onSelected: (value) {
-                                        showDialog(
-                                          context: context,
-                                          builder: (BuildContext context) {
-                                            return AlertDialog(
-                                              title:
-                                                  const Text("Confirm Delete"),
-                                              content: const Text(
-                                                  'Are you sure you want to delete this activity?'),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.of(context).pop();
-                                                  },
-                                                  child: const Text('Cancel'),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () {
-                                                    deleteSchedule(
-                                                        activList[index]
-                                                            .id_scheduled,
-                                                        activList[index]
-                                                            .id_activity);
-                                                    ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(
-                                                            const SnackBar(
-                                                      content:
-                                                          Text('Item deleted'),
-                                                    ));
-                                                    Navigator.of(context).pop();
-                                                  },
-                                                  child: const Text('Yes'),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        );
-                                      }),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 7,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        activList[index].title,
-                                        style: headerStyle,
-                                      ),
-                                      Text(
-                                        "Do your activity at: ",
-                                        style: textStyleGrey,
-                                      ),
-                                      Container(
-                                        alignment: Alignment.topLeft,
-                                        child: ListView.builder(
-                                          shrinkWrap: true,
-                                          itemCount: activList[index]
-                                                  .locations
-                                                  ?.length ??
-                                              0,
-                                          itemBuilder:
-                                              (BuildContext ctxt, int indx) {
-                                            if (activList[index]
-                                                    .locations
-                                                    ?.isNotEmpty ==
-                                                true) {
-                                              return Text(
-                                                "- ${activList[index].locations?[indx].address}",
-                                                style: textStyleGrey,
-                                              );
-                                            } else {
-                                              return Text(
-                                                "Wherever you want :)",
-                                                style: textStyleGrey,
-                                              );
-                                            }
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(
-                                        height: 20,
-                                      ),
-                                      Text(
-                                        "${formattedActivityTimeOnly(activList[index].start_time)} - ${formattedActivityTimeOnly(activList[index].end_time)}",
-                                        style: subHeaderStyle,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Expanded(
-                                  flex: 3,
-                                  child: Container(
-                                    margin: const EdgeInsets.all(10),
-                                    child: Image.asset(getPriorityImage(
-                                        activList[index].important_type,
-                                        activList[index].urgent_type)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                      child: Image.asset(
+                        getPriorityImageByPriorityType("Utama"),
+                      ),
+                    ),
+                    Text(
+                      "Prioritas Utama",
+                      style: textStyle,
+                    ),
+                    Expanded(
+                      child: Text(
+                        "0 Aktivitas",
+                        style: textStyleBold,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(
-                  height: 5,
+              ),
+              Container(
+                margin: const EdgeInsets.only(
+                  right: 5,
                 ),
-              ],
-            ),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.all(10),
+                width: MediaQuery.of(context).size.width * 0.35,
+                height: MediaQuery.of(context).size.width * 0.2,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: const Color.fromARGB(255, 3, 0, 66),
+                  ),
+                  color: getPriorityColorByPriorityType("Tinggi"),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Image.asset(
+                        getPriorityImageByPriorityType("Tinggi"),
+                      ),
+                    ),
+                    Text(
+                      "Prioritas Tinggi",
+                      style: textStyle,
+                    ),
+                    Expanded(
+                      child: Text(
+                        "0 Aktivitas",
+                        style: textStyleBold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                margin: const EdgeInsets.only(
+                  right: 5,
+                ),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.all(10),
+                width: MediaQuery.of(context).size.width * 0.35,
+                height: MediaQuery.of(context).size.width * 0.2,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: const Color.fromARGB(255, 3, 0, 66),
+                  ),
+                  color: getPriorityColorByPriorityType("Sedang"),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Image.asset(
+                        getPriorityImageByPriorityType("Sedang"),
+                      ),
+                    ),
+                    Text(
+                      "Prioritas Sedang",
+                      style: textStyle,
+                    ),
+                    Expanded(
+                      child: Text(
+                        "0 Aktivitas",
+                        style: textStyleBold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                margin: const EdgeInsets.only(
+                  right: 5,
+                ),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.all(10),
+                width: MediaQuery.of(context).size.width * 0.35,
+                height: MediaQuery.of(context).size.width * 0.2,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: const Color.fromARGB(255, 3, 0, 66),
+                  ),
+                  color: getPriorityColorByPriorityType("Rendah"),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Image.asset(
+                        getPriorityImageByPriorityType("Rendah"),
+                      ),
+                    ),
+                    Text(
+                      "Prioritas Rendah",
+                      style: textStyle,
+                    ),
+                    Expanded(
+                      child: Text(
+                        "0 Aktivitas",
+                        style: textStyleBold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           );
-        },
-      );
-    }
+        } else {
+          Map<String, int> priority = snapshot.data!;
+          return Row(
+            children: priority.entries.map((e) {
+              return Container(
+                margin: const EdgeInsets.only(
+                  right: 5,
+                ),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.all(10),
+                width: MediaQuery.of(context).size.width * 0.35,
+                height: MediaQuery.of(context).size.width * 0.2,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: const Color.fromARGB(255, 3, 0, 66),
+                  ),
+                  color: getPriorityColorByPriorityType(e.key),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Image.asset(
+                        getPriorityImageByPriorityType(e.key),
+                      ),
+                    ),
+                    Text(
+                      "Prioritas ${e.key}",
+                      style: textStyle,
+                    ),
+                    Expanded(
+                      child: Text(
+                        "${e.value} Aktivitas",
+                        style: textStyleBold,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          );
+        }
+      },
+    );
   }
 
-  /* ------------------------------------------------------------------------------------------------------------------- */
+  // Activity List
+  Widget formattedListOfActivities(BuildContext context) {
+    return FutureBuilder<List<ActivityList>>(
+        future: getActivityList(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return SizedBox(
+              width: MediaQuery.of(context).size.width,
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.black),
+              ),
+            );
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error: ${snapshot.error}',
+                // style: caption1Style,
+              ),
+            );
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Container(
+              padding: const EdgeInsets.all(30),
+              margin: const EdgeInsets.only(
+                bottom: 20,
+                left: 20,
+                right: 20,
+                top: 10,
+              ),
+              width: double.infinity,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: const Color.fromARGB(255, 3, 0, 66),
+                ),
+              ),
+              child: Text(
+                "Kamu belum punya aktivitas apapun, mulai rencanakan aktivitasmu hari ini dan keluarkan potensimu sepenuhnya.",
+                style: textStyle,
+                textAlign: TextAlign.center,
+              ),
+            );
+          } else {
+            List<ActivityList> activity = snapshot.data!;
 
-  void deleteSchedule(String scheduleID, String activityID) async {
-    DocumentReference scheduleDocRef = FirebaseFirestore.instance
-        .collection('scheduled_activities')
-        .doc(scheduleID);
+            return ListView.builder(
+              itemCount: activity.length,
+              itemBuilder: (BuildContext context, int index) {
+                ActivityList act = activity[index];
+                String priority =
+                    getPriorityTypeOnly(act.importantType, act.urgentType);
 
-    DocumentSnapshot scheduleDocSnapshot = await scheduleDocRef.get();
+                return GestureDetector(
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DetailActivity(
+                          scheduledID: act.idScheduled,
+                        ),
+                      ),
+                    );
+                    setState(() {
+                      getActivityList();
+                      // scheduleNotifications(userID);
+                    });
+                    // print(activList[index].id_scheduled);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(
+                      bottom: 5,
+                      right: 20,
+                      left: 20,
+                    ),
+                    child: Column(
+                      children: [
+                        // Left (number) n Right (container)
+                        Row(
+                          children: [
+                            // Left
+                            Expanded(
+                              flex: 1,
+                              child: Container(
+                                alignment: Alignment.center,
+                                child: Text(
+                                  "${index + 1}",
+                                  style: headerStyleBold,
+                                ),
+                              ),
+                            ),
+                            // Right
+                            Expanded(
+                              flex: 9,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(15),
+                                  color:
+                                      getPriorityColorByPriorityType(priority),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Align(
+                                          alignment: Alignment.topLeft,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                color: const Color.fromARGB(
+                                                    255, 3, 0, 66)),
+                                            padding: const EdgeInsets.only(
+                                              top: 5,
+                                              bottom: 5,
+                                              left: 10,
+                                              right: 10,
+                                            ),
+                                            child: Text(
+                                              "Prioritas $priority",
+                                              style: textStyleBoldWhite,
+                                            ),
+                                          ),
+                                        ),
+                                        Align(
+                                          alignment: Alignment.topRight,
+                                          child: PopupMenuButton(
+                                              itemBuilder:
+                                                  (BuildContext context) => [
+                                                        const PopupMenuItem(
+                                                          value: 'delete',
+                                                          child: Row(
+                                                            children: [
+                                                              Icon(Icons.delete,
+                                                                  color: Colors
+                                                                      .black),
+                                                              SizedBox(
+                                                                  width: 8),
+                                                              Text('Hapus'),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                              onSelected: (value) {
+                                                showDialog(
+                                                  context: context,
+                                                  builder:
+                                                      (BuildContext context) {
+                                                    return AlertDialog(
+                                                      title: Text(
+                                                        "Konfirmasi Hapus",
+                                                        style:
+                                                            subHeaderStyleBold,
+                                                      ),
+                                                      content: Text(
+                                                        'Apakah kamu yakin untuk menghapus jadwal kegiatan ini?',
+                                                        style: textStyle,
+                                                      ),
+                                                      actions: [
+                                                        GestureDetector(
+                                                          onTap: () async {
+                                                            await deleteScheduledActivity(
+                                                              act.idScheduled,
+                                                              act.idActivity,
+                                                            );
 
-    // Check if the document exists and the activities_id field matches the one you provided
-    if (scheduleDocSnapshot.exists &&
-        scheduleDocSnapshot['activities_id'] == activityID) {
-      // If the activities_id matches, delete the document
-      await scheduleDocRef.delete();
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('The schedule activity has been successfully deleted'),
-        ),
-      );
-    } else {
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('The schedule activity unsuccessfully deleted'),
-        ),
-      );
-      print('Document not found or activities_id does not match');
-    }
+                                                            setState(() {
+                                                              getActivityList();
+                                                            });
+                                                          },
+                                                          child: Container(
+                                                            alignment: Alignment
+                                                                .center,
+                                                            width:
+                                                                double.infinity,
+                                                            height: 50,
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          15),
+                                                              border:
+                                                                  Border.all(
+                                                                width: 1,
+                                                                color: const Color
+                                                                    .fromARGB(
+                                                                    255,
+                                                                    3,
+                                                                    0,
+                                                                    66),
+                                                              ),
+                                                            ),
+                                                            child: // Space between icon and text
+                                                                Text(
+                                                              'Hapus',
+                                                              style:
+                                                                  textStyleBold,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        GestureDetector(
+                                                          onTap: () {
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop();
+                                                          },
+                                                          child: Container(
+                                                            margin:
+                                                                const EdgeInsets
+                                                                    .only(
+                                                                    top: 5),
+                                                            alignment: Alignment
+                                                                .center,
+                                                            width:
+                                                                double.infinity,
+                                                            height: 50,
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          15),
+                                                              color: const Color
+                                                                  .fromARGB(255,
+                                                                  3, 0, 66),
+                                                            ),
+                                                            child: Text(
+                                                              'Batal',
+                                                              style:
+                                                                  textStyleBoldWhite,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  },
+                                                );
+                                              }),
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 6,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                act.title,
+                                                style: headerStyleBold,
+                                              ),
+                                              Text(
+                                                "Lakukan Aktivitasmu di: ",
+                                                style: textStyle,
+                                              ),
+                                              act.locations == null
+                                                  ? Text(
+                                                      "Dimanapun :)",
+                                                      style: textStyle,
+                                                    )
+                                                  : Column(
+                                                      children: List.generate(
+                                                          act.locations!.length,
+                                                          (int indx) {
+                                                        return Text(
+                                                          "- ${act.locations![indx].address}",
+                                                          style: textStyle,
+                                                        );
+                                                      }),
+                                                    ),
+                                              const SizedBox(
+                                                height: 20,
+                                              ),
+                                              Text(
+                                                "${formattedActivityTimeOnly(act.startTime)} - ${formattedActivityTimeOnly(act.endTime)}",
+                                                style: subHeaderStyleBold,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 3,
+                                          child: Container(
+                                            margin: const EdgeInsets.all(10),
+                                            child: Image.asset(
+                                                getPriorityImageByPriorityType(
+                                                    priority)),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 5,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          }
+        });
   }
 
   /* ------------------------------------------------------------------------------------------------------------------- */
@@ -479,15 +1085,14 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    // bacaData();
-    // print("selected date: $_selectedDate");
-    _fetchActivityList();
+    getProfile();
+    getActivitiesPerPriority();
+    _initializeActiveDates();
+    fetchDataAndScheduleNotifications();
+  }
 
-    // Periodically check and update current activity
-    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
-      // updateCurrentActivity();
-      // bacaDataCurrent();
-    });
+  Future<void> fetchDataAndScheduleNotifications() async {
+    await getActivityList();
   }
 
   /* ------------------------------------------------------------------------------------------------------------------- */
@@ -495,226 +1100,141 @@ class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        margin: const EdgeInsets.only(
-          top: 40,
-          left: 20,
-          right: 20,
-        ),
-        child: Column(
+      backgroundColor: Colors.white,
+      body: LayoutBuilder(builder: (context, constraints) {
+        return Column(
           children: <Widget>[
-            // Header Profile
-            Row(
-              /* profil alignment kanan*/
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.grey,
-                        width: 1,
-                      ),
-                      image: const DecorationImage(
-                        image: AssetImage('assets/Default_Photo_Profile.png'),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 8,
-                  child: Column(
-                    children: [
-                      Container(
-                        alignment: Alignment.center,
-                        child: Text(
-                          "Hello, ...",
-                          style: subHeaderStyle,
-                        ),
-                      ),
-                      Container(
-                        alignment: Alignment.center,
-                        child: Text(
-                          "Today, $_todayDate",
-                          style: textStyleGrey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Container(
+              width: constraints.maxWidth,
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(
+                top: 40,
+                left: 20,
+                right: 20,
+                bottom: 10,
+              ),
+              decoration: const BoxDecoration(
+                color: Color.fromARGB(255, 3, 0, 66),
+              ),
+              child: profileTop(context),
             ),
-            // Current activity - Title
+            // Total Activity Per Priority - Title
+            Container(
+              width: constraints.maxWidth,
+              margin: const EdgeInsets.only(left: 20, right: 20),
+              child: Text(
+                "Total Kegiatan per Prioritas",
+                style: subHeaderStyleBold,
+              ),
+            ),
+            // Total Activity Per Priority - Content
             Container(
               margin: const EdgeInsets.only(
-                top: 15,
+                left: 20,
+                right: 20,
               ),
-              width: double.infinity,
-              child: Text(
-                "Current Activity",
-                style: headerStyle,
+              width: constraints.maxWidth,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: formattedTotalActivitiesPerPriority(context),
               ),
             ),
-            // Curent Activity - Content
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DetailActivity(
-                      scheduledID: aLS2!.id_scheduled,
+            //Calendar
+            Container(
+              margin: const EdgeInsets.only(left: 20, right: 20),
+              child: TableCalendar(
+                locale: 'id_ID',
+                focusedDay: _focusedDay,
+                firstDay: DateTime.now().subtract(const Duration(days: 365)),
+                lastDay: DateTime.now().add(const Duration(days: 365)),
+                calendarFormat: calendarFormat,
+                selectedDayPredicate: (day) {
+                  return isSameDay(_selectedDay, day);
+                },
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay;
+                    _selectedDate =
+                        DateFormat("yyyy-MM-dd").format(selectedDay);
+                  });
+                },
+                onPageChanged: (focusedDay) {
+                  _focusedDay = focusedDay;
+                },
+                calendarStyle: CalendarStyle(
+                  outsideDaysVisible: false,
+                  defaultTextStyle: subHeaderStyleBold,
+                  weekendTextStyle: GoogleFonts.poppins(
+                    textStyle: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
                     ),
                   ),
-                );
-              },
-              child: aLS2 == null
-                  ? Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(10),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: const Color.fromARGB(255, 255, 170, 0),
-                      ),
-                      child: Text(
-                        "You're free for now :)",
-                        style: headerStyle,
-                      ),
-                    )
-                  : Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: Color.fromARGB(
-                          aLS2?.color_a ?? 255,
-                          aLS2?.color_r ?? 166,
-                          aLS2?.color_g ?? 255,
-                          aLS2?.color_b ?? 204,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 7,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(20),
-                                    color: const Color.fromARGB(255, 3, 0, 66),
-                                  ),
-                                  padding: const EdgeInsets.all(5),
-                                  child: Text(
-                                    getPriority(
-                                      aLS2!.important_type,
-                                      aLS2!.urgent_type,
-                                    ),
-                                    style: textStyle,
-                                  ),
-                                ),
-                                Text(
-                                  aLS2!.title,
-                                  style: screenTitleStyle,
-                                ),
-                                Text(
-                                  "Do your activity at Place",
-                                  style: textStyleGrey,
-                                ),
-                                // Container(
-                                //   alignment: Alignment.topLeft,
-                                //   child: formattedCurrentLocations(),
-                                // ),
-                                const SizedBox(
-                                  height: 20,
-                                ),
-                                Text(
-                                  "${formattedActivityTimeOnly(aLS2!.start_time)} - ${formattedActivityTimeOnly(aLS2!.end_time)}",
-                                  style: subHeaderStyle,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: Container(
-                              margin: const EdgeInsets.all(10),
-                              child: Image.asset(getPriorityImage(
-                                  aLS2!.important_type, aLS2!.urgent_type)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-            ),
-            // Date Calendar List
-            Container(
-              margin: const EdgeInsets.only(top: 10),
-              child: DatePicker(
-                DateTime.now(),
-                height: 90,
-                width: 60,
-                initialSelectedDate: DateTime.now(),
-                selectionColor: const Color.fromARGB(255, 3, 0, 66),
-                selectedTextColor: Colors.white,
-                dayTextStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
+                  selectedTextStyle: subHeaderStyleBoldWhite,
+                  todayTextStyle: subHeaderStyleBold,
+                  todayDecoration: const BoxDecoration(
+                    color: Colors.grey,
+                    shape: BoxShape.circle,
+                  ),
+                  selectedDecoration: const BoxDecoration(
+                    color: Color.fromARGB(255, 3, 0, 66),
+                    shape: BoxShape.circle,
+                  ),
                 ),
-                dateTextStyle: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey,
+                headerVisible: true,
+                headerStyle: HeaderStyle(
+                  titleCentered: true,
+                  titleTextStyle: subHeaderStyleBold,
+                  formatButtonVisible: false,
+                  formatButtonShowsNext: false,
                 ),
-                monthTextStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-                onDateChange: (date) {
-                  _selectedDate = date.toString();
-                  // bacaData();
-                  _fetchActivityList();
-                  // print("selected date: $_selectedDate");
-                  // print("user ID: $userID");
-                },
               ),
             ),
             // Activity list - Title
             Container(
               margin: const EdgeInsets.only(
-                top: 10,
+                left: 20,
+                right: 20,
               ),
-              width: double.infinity,
+              width: constraints.maxWidth,
               child: Text(
-                "Your Activity List",
-                style: headerStyle,
+                "Your Activities",
+                style: subHeaderStyleBold,
               ),
             ),
             // Activity List - Content
             Expanded(
-              child: formattedListOfActivities(actList),
+              child: formattedListOfActivities(context),
             ),
           ],
-        ),
-      ),
+        );
+      }),
       // Floating Action Button
       floatingActionButton: FloatingActionButton(
-        shape: const CircleBorder(),
-        foregroundColor: const Color.fromARGB(255, 3, 0, 66),
-        backgroundColor: const Color.fromARGB(255, 255, 170, 0),
-        onPressed: () {
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: ((context) => const AddActivities())));
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: ((context) => const AddActivities())),
+          ).then((result) {
+            if (result == true) {
+              // Data was added, refresh timer.dart
+              Provider.of<ActivityTaskToday>(context, listen: false)
+                  .resetDataLoaded();
+              Provider.of<ActivityTaskToday>(context, listen: false)
+                  .getListOfTodayActivities();
+            }
+          });
+          // await scheduleNotifications(userID);
+          setState(() {
+            _selectedDate = DateFormat("yyyy-MM-dd").format(DateTime.now());
+            // scheduleNotifications(userID);
+          });
         },
-        child: const Icon(Icons.add_rounded),
+        elevation: 10.0,
+        backgroundColor: const Color.fromARGB(255, 3, 0, 66),
+        child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
     );
   }

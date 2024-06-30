@@ -12,7 +12,20 @@
           "package_name": "com.example.pickleapp"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "571257878250-dkf897h0bmmfk78shohgl3tmbq1pnant.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.pickleapp",
+            "certificate_hash": "0a8fc3d08e67f05918debb468adc0afbddf977d9"
+          }
+        },
+        {
+          "client_id": "571257878250-d9vfams6jrhr8ipb0f6oo1s16dpogr2p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAlsFWer3k8u7BbfOHHrPXRHbeluTooYTI"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "571257878250-1hlvr56drj3ft8e27frdfp8q6eeuq8j6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "571257878250-2ei5jq79pv0kom4nnqfec5is6trn8cla.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.pickleapp"
+              }
+            }
+          ]
         }
       }
     }

@@ -1,44 +1,134 @@
+// ignore_for_file: use_build_context_synchronously, avoid_print
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:pickleapp/main.dart';
-import 'package:pickleapp/screen/components/button_white.dart';
+import 'package:pickleapp/screen/components/alert_information.dart';
 import 'package:pickleapp/theme.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
 
-// import 'package:pickleapp/screen/components/inputText.dart';
-import 'package:pickleapp/screen/components/button_calm_blue.dart';
-
-import 'package:pickleapp/screen/page/profile.dart';
-
-class MyChangePassword extends StatefulWidget {
-  const MyChangePassword({super.key});
+// ignore: must_be_immutable
+class ChangePassword extends StatefulWidget {
+  const ChangePassword({
+    super.key,
+  });
 
   @override
-  State<MyChangePassword> createState() => _MChangePasswordState();
+  State<ChangePassword> createState() => _ChangePasswordState();
 }
 
-class _MChangePasswordState extends State<MyChangePassword> {
+class _ChangePasswordState extends State<ChangePassword> {
   final _formKey = GlobalKey<FormState>();
 
-  final RegExp _newPwdPattern = RegExp(
-      r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?':{}|<>]).{8,}$");
+  // final RegExp _newPwdPattern = RegExp(
+  //     r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?':{}|<>]).{8,}$");
 
-  final TextEditingController _newPass = TextEditingController();
-  final TextEditingController _rptPass = TextEditingController();
-  // final TextEditingController _email = TextEditingController();
-  final TextEditingController _oldPass = TextEditingController();
+  TextEditingController email = TextEditingController();
+  TextEditingController oldPass = TextEditingController();
 
   String message = "";
+
+  bool obsecurePassword = true;
+
+  // Encrypt password dengan SHA-256 hash
+  // String encryptPwd(String pwd) {
+  //   // Convert password ke SHA-256 hash
+  //   var bytes = utf8.encode(pwd);
+  //   var hash = sha256.convert(bytes);
+
+  //   // Convert encrypt pwd ke string
+  //   return hash.toString();
+  // }
+
+  Future<void> reauthenticateUser(String email, String currentPassword) async {
+    try {
+      await FirebaseAuth.instance.currentUser!.reauthenticateWithCredential(
+          EmailAuthProvider.credential(
+              email: email, password: currentPassword));
+      print('User re-authenticated');
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password') {
+        throw FirebaseAuthException(
+            message:
+                'Please fill with the correct current password, Thank you!',
+            code: e.code);
+      } else {
+        rethrow;
+      }
+    }
+  }
+
+  Future<void> updatedPassword() async {
+    try {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+
+      // Re-authenticate the user
+      await reauthenticateUser(email.text, oldPass.text);
+
+      // Update the password
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email.text);
+
+      Navigator.of(context).pop();
+      Navigator.of(context).pop();
+      Navigator.pop(context, true);
+
+      AlertInformation.showDialogBox(
+        context: context,
+        title: 'Verify Update Password',
+        message:
+            "We've sent you an email to change your password. Please check your email and complete the verification process before change your password. Thank you!",
+      );
+    } on FirebaseAuthException catch (e) {
+      Navigator.of(context).pop();
+      Navigator.of(context).pop();
+      if (e.code == 'invalid-email') {
+        AlertInformation.showDialogBox(
+          context: context,
+          title: 'Invalid Email',
+          message:
+              "Your email address is not valid, please to fill the email correctly.",
+        );
+      } else if (e.code == 'user-not-found') {
+        AlertInformation.showDialogBox(
+          context: context,
+          title: 'Email Not Found',
+          message:
+              "There is no account with your email, Please to fill the correct one.",
+        );
+      } else if (e.code == "invalid-credential") {
+        AlertInformation.showDialogBox(
+          context: context,
+          title: 'Incorrect Input',
+          message:
+              "Your email address or password isn't correct, please try again.",
+        );
+      } else {
+        AlertInformation.showDialogBox(
+          context: context,
+          title: '$e.code',
+          message: "${e.message}.",
+        );
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: Text(
           'Change Password',
-          style: screenTitleStyle,
+          style: subHeaderStyleBold,
         ),
       ),
       body: Form(
@@ -55,270 +145,206 @@ class _MChangePasswordState extends State<MyChangePassword> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Input password text
-              // ignore: avoid_unnecessary_containers
-              Container(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Current Password",
-                      style: subHeaderStyle,
-                      textDirection: TextDirection.ltr,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Email",
+                    style: textStyle,
+                  ),
+                  const SizedBox(
+                    height: 5,
+                  ),
+                  Container(
+                    padding: const EdgeInsets.only(
+                      left: 10,
+                      right: 10,
                     ),
-                    const SizedBox(
-                      height: 5,
+                    alignment: Alignment.centerLeft,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Colors.black,
+                        width: 1.0,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    Container(
-                      padding: const EdgeInsets.only(
-                        left: 10,
-                        right: 10,
-                      ),
-                      alignment: Alignment.centerLeft,
-                      height: 40,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.black,
-                          width: 1.0,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              // readOnly: widget == null ? false : true,
-                              keyboardType: TextInputType.text,
-                              // textCapitalization: TextCapitalization.sentences,
-                              obscureText: true,
-                              autofocus: false,
-                              controller: _oldPass,
-
-                              style: textStyle,
-                              decoration: InputDecoration(
-                                hintText:
-                                    "Enter your current secret password here",
-                                hintStyle: textStyle,
-                              ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            keyboardType: TextInputType.emailAddress,
+                            autofocus: false,
+                            controller: email,
+                            decoration: InputDecoration(
+                              hintText: "Enter your email here",
+                              hintStyle: textStyleGrey,
                             ),
+                            validator: (value) {
+                              if (value == "" || value == null) {
+                                return 'Please fill this field';
+                              } else {
+                                return null;
+                              }
+                            },
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               const SizedBox(
-                height: 10,
+                height: 5,
               ),
               // Input password text
-              // ignore: avoid_unnecessary_containers
-              Container(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "New Password",
-                      style: subHeaderStyle,
-                      textDirection: TextDirection.ltr,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Current Password",
+                    textDirection: TextDirection.ltr,
+                    style: textStyle,
+                  ),
+                  const SizedBox(
+                    height: 5,
+                  ),
+                  Container(
+                    padding: const EdgeInsets.only(
+                      left: 10,
+                      right: 10,
                     ),
-                    const SizedBox(
-                      height: 5,
+                    alignment: Alignment.centerLeft,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Colors.black,
+                        width: 1.0,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    Container(
-                      padding: const EdgeInsets.only(
-                        left: 10,
-                        right: 10,
-                      ),
-                      alignment: Alignment.centerLeft,
-                      height: 40,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.black,
-                          width: 1.0,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              // readOnly: widget == null ? false : true,
-                              keyboardType: TextInputType.text,
-                              // textCapitalization: TextCapitalization.sentences,
-                              obscureText: true,
-                              autofocus: false,
-                              controller: _newPass,
-                              // validator: (value) {
-                              //   if (!_newPwdPattern.hasMatch(_newPass.text)) {
-                              //     ScaffoldMessenger.of(context).showSnackBar(
-                              //       SnackBar(
-                              //         content: Text(
-                              //             "Please, password must have at least a lowercase (a-z), uppercase (A-Z), number(0-9), and symbol (!@#%^\$&*(),.?':{}|<>)!"),
-                              //       ),
-                              //     );
-                              //   } else {
-                              //     return null;
-                              //   }
-                              // },
-                              style: textStyle,
-                              decoration: InputDecoration(
-                                hintText: "Enter your New secret password here",
-                                hintStyle: textStyle,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            keyboardType: TextInputType.text,
+                            obscureText: obsecurePassword,
+                            autofocus: false,
+                            controller: oldPass,
+                            decoration: InputDecoration(
+                              hintText:
+                                  "Enter your current secret password here",
+                              hintStyle: textStyleGrey,
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  obsecurePassword
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    obsecurePassword = !obsecurePassword;
+                                  });
+                                },
                               ),
                             ),
+                            validator: (value) {
+                              if (value == null || value == "") {
+                                return 'Please fill this field with your current password.';
+                              } else {
+                                return null;
+                              }
+                            },
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              // Input password text
-              // ignore: avoid_unnecessary_containers
-              Container(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Repeat New Password",
-                      style: subHeaderStyle,
-                      textDirection: TextDirection.ltr,
-                    ),
-                    const SizedBox(
-                      height: 5,
-                    ),
-                    Container(
-                      padding: const EdgeInsets.only(
-                        left: 10,
-                        right: 10,
-                      ),
-                      alignment: Alignment.centerLeft,
-                      height: 40,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.black,
-                          width: 1.0,
                         ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              // readOnly: widget == null ? false : true,
-                              keyboardType: TextInputType.text,
-                              // textCapitalization: TextCapitalization.sentences,
-                              obscureText: true,
-                              autofocus: false,
-                              controller: _rptPass,
-                              // validator: (value) {
-                              //   if (value == null || value.isEmpty) {
-                              //     ScaffoldMessenger.of(context).showSnackBar(
-                              //       const SnackBar(
-                              //         content: Text(
-                              //             'Please repeat password is a must!'),
-                              //       ),
-                              //     );
-                              //   } else if (value != _newPass.text) {
-                              //     ScaffoldMessenger.of(context).showSnackBar(
-                              //       const SnackBar(
-                              //         content: Text(
-                              //             'Your password is no the same as your new password!'),
-                              //       ),
-                              //     );
-                              //   } else {
-                              //     return null;
-                              //   }
-                              // },
-                              style: textStyle,
-                              decoration: InputDecoration(
-                                hintText:
-                                    "Repeat your new secret password here",
-                                hintStyle: textStyle,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               const SizedBox(
                 height: 60,
               ),
-              MyButtonCalmBlue(
-                label: "Change Password",
-                onTap: () async {
-                  // if (_formKey.currentState != null &&
-                  //     !_formKey.currentState!.validate()) {
-                  //   submitChanged();
-                  // }
-                  if (_oldPass.text == "" ||
-                      _newPass.text == "" ||
-                      _rptPass.text == "") {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            "Your new or current or repeat password cannot be empty"),
-                      ),
-                    );
-                  } else if (_newPass.text == _oldPass.text) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            "Your new password cannot be the same as your current password"),
-                      ),
-                    );
-                  } else if (!_newPwdPattern.hasMatch(_newPass.text)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            "Please, password must have at least a lowercase (a-z), uppercase (A-Z), number(0-9), and symbol (!@#%^\$&*(),.?':{}|<>)!"),
-                      ),
-                    );
-                  } else if (_rptPass.text != _newPass.text) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Your repeat password is no the same as your new password!'),
-                      ),
-                    );
+              GestureDetector(
+                onTap: () {
+                  if (_formKey.currentState != null &&
+                      !_formKey.currentState!.validate()) {
+                    return;
                   } else {
-                    bool? confirmed = await confirmationBox(context);
-                    if (confirmed != null && confirmed) {
-                      // User confirmed, proceed with the desired action
-                      // ignore: avoid_print
-                      print('User click change it');
-                      try {
-                        submitChanged();
-                        // ignore: avoid_print
-                        print("Change password done, No Error");
-                        // ignore: use_build_context_synchronously
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => Profile(),
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text(
+                            'Password Change',
+                            style: subHeaderStyleBold,
                           ),
+                          content: Text('Are you sure want to change it?',
+                              style: textStyle),
+                          actions: <Widget>[
+                            GestureDetector(
+                              onTap: () {
+                                updatedPassword();
+                              },
+                              child: Container(
+                                alignment: Alignment.center,
+                                width: double.infinity,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(15),
+                                  border: Border.all(
+                                    width: 1,
+                                    color: const Color.fromARGB(255, 3, 0, 66),
+                                  ),
+                                ),
+                                child: // Space between icon and text
+                                    Text(
+                                  'Change it',
+                                  style: textStyleBold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: Container(
+                                alignment: Alignment.center,
+                                width: double.infinity,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(15),
+                                  color: const Color.fromARGB(255, 3, 0, 66),
+                                ),
+                                child: // Space between icon and text
+                                    Text(
+                                  'Cancel',
+                                  style: textStyleBoldWhite,
+                                ),
+                              ),
+                            ),
+                          ],
                         );
-                      } catch (e) {
-                        // ignore: avoid_print
-                        print("Error when click change password : $e");
-                      }
-                    } else {
-                      // User canceled
-                      // ignore: avoid_print
-                      print('User click cancel');
-                    }
+                      },
+                    );
                   }
                 },
+                child: Container(
+                  alignment: Alignment.center,
+                  width: double.infinity,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    color: const Color.fromARGB(255, 3, 0, 66),
+                  ),
+                  child: Text(
+                    "Change Password",
+                    style: textStyleBoldWhite,
+                  ),
+                ),
               ),
             ],
           ),
@@ -327,71 +353,71 @@ class _MChangePasswordState extends State<MyChangePassword> {
     );
   }
 
-  void submitChanged() async {
-    final response = await http.post(
-      Uri.parse("http://192.168.1.5:8012/picklePHP/changePassword.php"),
-      body: {
-        "newPassword": encryptPwd(_newPass.text),
-        "email": activeUser,
-        "oldPassword": encryptPwd(_oldPass.text),
-      },
-    );
-    if (response.statusCode == 200) {
-      Map json = jsonDecode(response.body);
-      message = json["message"];
-      if (json["result"] == "success") {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-          ),
-        );
-      } else {
-        // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-          ),
-        );
-      }
-    } else {
-      throw Exception("Failed to read API");
-    }
-  }
-}
+//   void submitChanged() async {
+//     final response = await http.post(
+//       Uri.parse("http://192.168.1.5:8012/picklePHP/changePassword.php"),
+//       body: {
+//         "newPassword": encryptPwd(_newPass.text),
+//         "email": activeUser,
+//         "oldPassword": encryptPwd(_oldPass.text),
+//       },
+//     );
+//     if (response.statusCode == 200) {
+//       Map json = jsonDecode(response.body);
+//       message = json["message"];
+//       if (json["result"] == "success") {
+//         if (!mounted) return;
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text(message),
+//           ),
+//         );
+//       } else {
+//         // ignore: use_build_context_synchronously
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text(message),
+//           ),
+//         );
+//       }
+//     } else {
+//       throw Exception("Failed to read API");
+//     }
+//   }
+// }
 
 // Encrypt password dengan SHA-256 hash
-String encryptPwd(String pwd) {
-  // Convert password ke SHA-256 hash
-  var bytes = utf8.encode(pwd);
-  var hash = sha256.convert(bytes);
+// String encryptPwd(String pwd) {
+//   // Convert password ke SHA-256 hash
+//   var bytes = utf8.encode(pwd);
+//   var hash = sha256.convert(bytes);
 
-  // Convert encrypt pwd ke string
-  return hash.toString();
-}
+//   // Convert encrypt pwd ke string
+//   return hash.toString();
+// }
 
-// Confirmation Dialog
-Future<bool?> confirmationBox(BuildContext context) async {
-  return showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text("Confirmation!"),
-        content: const Text("Are you sure you want to change your password?"),
-        actions: <Widget>[
-          MyButtonWhite(
-              label: "Cancel",
-              onTap: () {
-                Navigator.of(context).pop(false);
-              }),
-          MyButtonCalmBlue(
-            label: "Change it",
-            onTap: () {
-              Navigator.of(context).pop(true);
-            },
-          ),
-        ],
-      );
-    },
-  );
+// // Confirmation Dialog
+// Future<bool?> confirmationBox(BuildContext context) async {
+//   return showDialog(
+//     context: context,
+//     builder: (BuildContext context) {
+//       return AlertDialog(
+//         title: const Text("Confirmation!"),
+//         content: const Text("Are you sure you want to change your password?"),
+//         actions: <Widget>[
+//           MyButtonWhite(
+//               label: "Cancel",
+//               onTap: () {
+//                 Navigator.of(context).pop(false);
+//               }),
+//           MyButtonCalmBlue(
+//             label: "Change it",
+//             onTap: () {
+//               Navigator.of(context).pop(true);
+//             },
+//           ),
+//         ],
+//       );
+//     },
+//   );
 }

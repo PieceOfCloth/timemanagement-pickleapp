@@ -1,10 +1,17 @@
+// ignore_for_file: use_build_context_synchronously, avoid_print
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
+import 'package:pickleapp/auth.dart';
+import 'package:pickleapp/screen/components/alert_information.dart';
 import 'package:pickleapp/screen/page/forgot_password.dart';
 import 'package:pickleapp/screen/page/sign_up.dart';
 import 'package:pickleapp/theme.dart';
-import 'package:pickleapp/screen/components/button_calm_blue.dart';
-import 'package:pickleapp/screen/components/button_white.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
+bool isLoginManual = false;
 
 class MySignIn extends StatefulWidget {
   const MySignIn({super.key});
@@ -14,229 +21,57 @@ class MySignIn extends StatefulWidget {
 }
 
 class _MySignInState extends State<MySignIn> {
-  final TextEditingController _email = TextEditingController();
-  final TextEditingController _password = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+
+  final TextEditingController email = TextEditingController();
+  final TextEditingController password = TextEditingController();
 
   String message = '';
+  String? path;
+  bool obsecurePassword = true;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        margin: const EdgeInsets.only(
-          top: 40,
-          left: 20,
-          right: 20,
-          bottom: 20,
-        ),
-        width: double.infinity,
-        height: double.infinity,
-        alignment: Alignment.center,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo aplikasi
-              Container(
-                width: 150,
-                height: 150,
-                decoration: const BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('assets/app-logo.jpeg'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              Text(
-                "Pickle Jar Planner",
-                style: screenTitleStyle,
-              ),
-              const SizedBox(
-                height: 40,
-              ),
-              // Input text email
-              // ignore: avoid_unnecessary_containers
-              Container(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Email",
-                      style: subHeaderStyle,
-                      textDirection: TextDirection.ltr,
-                    ),
-                    const SizedBox(
-                      height: 5,
-                    ),
-                    Container(
-                      padding: const EdgeInsets.only(
-                        left: 10,
-                        right: 10,
-                      ),
-                      alignment: Alignment.centerLeft,
-                      height: 40,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.black,
-                          width: 1.0,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              // readOnly: widget == null ? false : true,
-                              keyboardType: TextInputType.emailAddress,
-                              // textCapitalization: TextCapitalization.sentences,
-                              autofocus: false,
-                              controller: _email,
-                              style: textStyle,
-                              decoration: InputDecoration(
-                                hintText: "Enter your email here",
-                                hintStyle: textStyle,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              // Input password text
-              // ignore: avoid_unnecessary_containers
-              Container(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Password",
-                      style: subHeaderStyle,
-                      textDirection: TextDirection.ltr,
-                    ),
-                    const SizedBox(
-                      height: 5,
-                    ),
-                    Container(
-                      padding: const EdgeInsets.only(
-                        left: 10,
-                        right: 10,
-                      ),
-                      alignment: Alignment.centerLeft,
-                      height: 40,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.black,
-                          width: 1.0,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              // readOnly: widget == null ? false : true,
-                              keyboardType: TextInputType.text,
-                              // textCapitalization: TextCapitalization.sentences,
-                              obscureText: true,
-                              autofocus: false,
-                              controller: _password,
-                              style: textStyle,
-                              decoration: InputDecoration(
-                                hintText: "Enter your secret password here",
-                                hintStyle: textStyle,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(
-                height: 20,
-              ),
-              // ignore: sized_box_for_whitespace
-              Container(
-                width: double.infinity,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    const Text(
-                      "Forgot password? ",
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        // print("tes klik forgot password");
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const MyForgotPassword(),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        "Click here",
-                        style: TextStyle(
-                          decoration: TextDecoration.underline,
-                          decorationColor: Colors.black,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(
-                height: 20,
-              ),
-              MyButtonCalmBlue(
-                label: "Sign In",
-                onTap: () {
-                  submit();
-                  // ScaffoldMessenger.of(context).showSnackBar(
-                  //   SnackBar(
-                  //     content: Text(error_login),
-                  //   ),
-                  // );
-                  // print(encryptPwd(_password.text));
-                },
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              Text(
-                "Or",
-                style: textStyle,
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              MyButtonWhite(
-                label: "Sign Up",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MySignUp(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Future<void> checkLogin() async {
+    try {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+      setState(() {
+        isLoginManual = true;
+        isLogin = true;
+      });
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email.text,
+        password: password.text,
+      );
+      Navigator.of(context).pop();
+    } on FirebaseAuthException catch (e) {
+      Navigator.of(context).pop();
+      if (e.code == 'invalid-email') {
+        AlertInformation.showDialogBox(
+            context: context,
+            title: 'Email Tidak Valid',
+            message:
+                "Email kamu tidak valid, Silahkan untuk memberikan email yang valid.");
+      } else if (e.code == 'wrong-password') {
+        AlertInformation.showDialogBox(
+            context: context,
+            title: 'Kata Sandi Salah',
+            message:
+                "Kata sandi yang kamu masukkan salah, Silahkan untuk memasukkan kata sandi yang benar.");
+      } else {
+        AlertInformation.showDialogBox(
+            context: context,
+            title: 'Akun Pengguna Tidak Ditemukan',
+            message:
+                'Kami tidak dapat menemukan akun kamu. Mohon cek input email dan kata sandi kamu atau daftarkan akun kamu atau langsung login dengan menekan "Sign In dengan Google".');
+      }
+    }
   }
 
-  void submit() async {
+  Future<void> loginWithGoogle() async {
     try {
       showDialog(
         context: context,
@@ -245,55 +80,397 @@ class _MySignInState extends State<MySignIn> {
         },
       );
 
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _email.text,
-        password: encryptPwd(_password.text),
+      await GoogleSignIn().signOut();
+
+      final GoogleSignInAccount? gUser = await GoogleSignIn().signIn();
+
+      if (gUser == null) {
+        Navigator.of(context).pop();
+        return;
+      }
+
+      setState(() {
+        isLoginManual = false;
+        isLogin = true;
+      });
+
+      final GoogleSignInAuthentication gAuth = await gUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: gAuth.accessToken,
+        idToken: gAuth.idToken,
       );
+
+      UserCredential userCred =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final userDoc = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCred.user?.uid);
+
+      final docSnapshot = await userDoc.get();
+
+      if (!docSnapshot.exists) {
+        String fileName = '${userCred.user?.uid}.jpg';
+        String url = 'user_profile/$fileName';
+        Reference storageReference = FirebaseStorage.instance
+            .ref()
+            .child('user_profile')
+            .child(fileName);
+
+        // Load default profile picture from assets as ByteData
+        ByteData defaultImageData = await rootBundle.load(path!);
+        // Convert ByteData to Uint8List
+        Uint8List imageDataUint8List = defaultImageData.buffer.asUint8List();
+        // Upload gambar ke Firebase Storage
+        await storageReference.putData(imageDataUint8List);
+
+        await userDoc.set({
+          'email': userCred.user?.email,
+          'created_at': FieldValue.serverTimestamp(),
+          'update_at': FieldValue.serverTimestamp(),
+          'name': userCred.user?.displayName,
+          'path': url,
+        });
+      }
 
       Navigator.of(context).pop();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Login Successful."),
-        ),
-      );
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.code),
-        ),
-      );
+      Navigator.of(context).pop();
+      AlertInformation.showDialogBox(
+          context: context, title: e.code, message: e.message ?? e.code);
     }
   }
-  //   final response = await http.post(
-  //     Uri.parse("http://192.168.1.13:8012/picklePHP/signIn.php"),
-  //     body: {
-  //       "email": _email.text,
-  //       "pwd": encryptPwd(_password.text),
-  //     },
-  //   );
-  //   if (response.statusCode == 200) {
-  //     Map json = jsonDecode(response.body);
-  //     message = json["message"];
-  //     if (json["result"] == "success") {
-  //       final prefs = await SharedPreferences.getInstance();
-  //       prefs.setString("user_id", _email.text);
-  //       // ignore: use_build_context_synchronously
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text(message),
-  //         ),
-  //       );
-  //       main();
-  //     } else {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text(message),
-  //         ),
-  //       );
-  //     }
-  //   } else {
-  //     throw Exception('Failed to read API');
-  //   }
-  // }
+
+  @override
+  void initState() {
+    super.initState();
+    setState(() {
+      path = "assets/Default_Photo_Profile.png";
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: LayoutBuilder(builder: (context, constraints) {
+          return Container(
+            margin: const EdgeInsets.only(
+              // top: 40,
+              left: 40,
+              right: 40,
+              bottom: 20,
+            ),
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            alignment: Alignment.center,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Logo aplikasi
+                  Container(
+                    width: 150,
+                    height: 150,
+                    decoration: const BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage('assets/app-logo.png'),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    "Pickle App",
+                    style: screenTitleStyle,
+                  ),
+                  Text(
+                    "Rencanakan harimu dengan cerdas",
+                    style: textStyle,
+                  ),
+                  const SizedBox(
+                    height: 20,
+                  ),
+                  // Input text email
+                  Form(
+                    key: formKey,
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      child: Column(
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Email",
+                                textDirection: TextDirection.ltr,
+                                style: textStyle,
+                              ),
+                              const SizedBox(
+                                height: 5,
+                              ),
+                              Container(
+                                padding: const EdgeInsets.only(
+                                  left: 10,
+                                  right: 10,
+                                ),
+                                alignment: Alignment.centerLeft,
+                                width: constraints.maxWidth,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 1.0,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        keyboardType:
+                                            TextInputType.emailAddress,
+                                        autofocus: false,
+                                        controller: email,
+                                        decoration: InputDecoration(
+                                          hintText:
+                                              "Masukkan email kamu disini",
+                                          hintStyle: textStyleGrey,
+                                        ),
+                                        validator: (value) {
+                                          if (value == "" || value == null) {
+                                            return 'Silahkan isi email kamu';
+                                          } else {
+                                            return null;
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(
+                            height: 10,
+                          ),
+                          // Input password text
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Kata sandi",
+                                textDirection: TextDirection.ltr,
+                                style: textStyle,
+                              ),
+                              const SizedBox(
+                                height: 5,
+                              ),
+                              Container(
+                                padding: const EdgeInsets.only(
+                                  left: 10,
+                                  right: 10,
+                                ),
+                                alignment: Alignment.centerLeft,
+                                width: constraints.maxWidth,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 1.0,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        keyboardType: TextInputType.text,
+                                        obscureText: obsecurePassword,
+                                        autofocus: false,
+                                        controller: password,
+                                        decoration: InputDecoration(
+                                          hintText:
+                                              "Masukkan kata sandi kamu disini",
+                                          hintStyle: textStyleGrey,
+                                          suffixIcon: IconButton(
+                                            icon: Icon(
+                                              obsecurePassword
+                                                  ? Icons.visibility
+                                                  : Icons.visibility_off,
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                obsecurePassword =
+                                                    !obsecurePassword;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                        validator: (value) {
+                                          if (value == "" || value == null) {
+                                            return 'Silahkan isi kata sandi kamu.';
+                                          } else {
+                                            return null;
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(
+                            height: 10,
+                          ),
+                          // ignore: sized_box_for_whitespace
+                          Container(
+                            width: constraints.maxWidth,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  "Lupa kata sandi? ",
+                                  style: textStyle,
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    // print("tes klik forgot password");
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const MyForgotPassword(),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    "Tekan disini",
+                                    style: TextStyle(
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: Colors.blue,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(
+                            height: 10,
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              if (formKey.currentState != null &&
+                                  !formKey.currentState!.validate()) {
+                                return;
+                              } else {
+                                checkLogin();
+                              }
+                            },
+                            child: Container(
+                              alignment: Alignment.center,
+                              width: constraints.maxWidth,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(15),
+                                color: const Color.fromARGB(255, 3, 0, 66),
+                              ),
+                              child: Text(
+                                "Sign In",
+                                style: textStyleBoldWhite,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 5,
+                  ),
+                  Container(
+                    width: constraints.maxWidth,
+                    alignment: Alignment.center,
+                    child: Text(
+                      "atau",
+                      style: textStyle,
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 5,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      loginWithGoogle();
+                    },
+                    child: Container(
+                      alignment: Alignment.center,
+                      width: constraints.maxWidth,
+                      padding: const EdgeInsets.only(
+                        top: 10,
+                        bottom: 10,
+                      ),
+                      height: 50,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: const Color.fromARGB(255, 3, 0, 66),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset("assets/google-logo.png"), // Logout icon
+                          const SizedBox(
+                              width: 8.0), // Space between icon and text
+                          Text(
+                            'Sign In dengan Google',
+                            style: textStyleBold,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  SizedBox(
+                    width: constraints.maxWidth,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Tidak memiliki akun? ",
+                          style: textStyle,
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const MySignUp(),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            "Daftar sekarang",
+                            style: TextStyle(
+                              decoration: TextDecoration.underline,
+                              decorationColor: Colors.blue,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
 }

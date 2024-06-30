@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:pickleapp/theme.dart';
 
 class MyButtonCalmBlue extends StatelessWidget {
   final String label;
@@ -20,7 +19,7 @@ class MyButtonCalmBlue extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: subHeaderStyle,
+          // style: subHeaderStyle,
         ),
       ),
     );

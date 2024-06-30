@@ -2,18 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:pickleapp/theme.dart';
 
 // ignore: must_be_immutable
-class MyInputTextMust extends StatelessWidget {
+class InputText extends StatelessWidget {
   final String title;
   final String placeholder;
-  TextEditingController? value;
-  final Widget? widget;
+  TextEditingController? cont;
 
-  MyInputTextMust({
+  InputText({
     super.key,
     required this.title,
     required this.placeholder,
-    required this.value,
-    this.widget,
+    this.cont,
   });
 
   @override
@@ -23,7 +21,7 @@ class MyInputTextMust extends StatelessWidget {
       children: [
         Text(
           title,
-          style: subHeaderStyleGrey,
+          style: textStyle,
         ),
         const SizedBox(
           height: 5,
@@ -34,51 +32,49 @@ class MyInputTextMust extends StatelessWidget {
             right: 10,
           ),
           alignment: Alignment.centerLeft,
-          height: 40,
+          height: 50,
           width: double.infinity,
           decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
             border: Border.all(
               color: Colors.grey,
               width: 1.0,
             ),
-            borderRadius: BorderRadius.circular(10),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  readOnly: widget == null ? false : true,
-                  keyboardType: TextInputType.text,
-                  textCapitalization: TextCapitalization.sentences,
+          child: cont == null
+              ? TextFormField(
                   autofocus: false,
-                  style: textStyle,
+                  keyboardType: TextInputType.text,
+                  textCapitalization: TextCapitalization.words,
                   decoration: InputDecoration(
                     hintText: placeholder,
                     hintStyle: textStyleGrey,
                   ),
-                  controller: value,
-                  // onChanged: (v) {
-                  //   value = v;
-                  // },
-                  validator: (val) {
-                    if (val == null || val.isEmpty) {
-                      return 'You need to fill these input, please';
+                  validator: (v) {
+                    if (v == null || v.isEmpty) {
+                      return 'Opps, You need to fill this';
                     } else {
                       return null;
                     }
                   },
+                )
+              : TextFormField(
+                  autofocus: false,
+                  keyboardType: TextInputType.text,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    hintText: placeholder,
+                    hintStyle: textStyleGrey,
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) {
+                      return 'Opps, You need to fill this';
+                    } else {
+                      return null;
+                    }
+                  },
+                  controller: cont,
                 ),
-              ),
-              widget == null
-                  ? Container()
-                  : Container(
-                      child: widget,
-                    ),
-            ],
-          ),
-        ),
-        const SizedBox(
-          height: 10,
         ),
       ],
     );

@@ -1,18 +1,29 @@
+// ignore_for_file: avoid_print, use_build_context_synchronously
+
+import 'dart:io';
+
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:open_file/open_file.dart';
+import 'package:pickleapp/auth.dart';
+import 'package:pickleapp/screen/class/algorithm_schedule.dart';
 import 'package:pickleapp/screen/class/file.dart';
 import 'package:pickleapp/screen/class/location.dart';
 import 'package:pickleapp/screen/class/notification.dart';
 import 'package:pickleapp/screen/class/task.dart';
-import 'package:pickleapp/screen/components/button_calm_blue.dart';
+import 'package:pickleapp/screen/components/alert_information.dart';
+import 'package:pickleapp/screen/services/activity_task_state.dart';
+import 'package:provider/provider.dart';
+// import 'package:pickleapp/screen/page/home.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:logger/logger.dart';
-import 'package:timezone/timezone.dart' as tz;
+import 'package:collection/collection.dart';
 
-import 'package:pickleapp/screen/class/addActivityList.dart';
-import 'package:pickleapp/screen/page/activity_edit.dart';
+import 'package:pickleapp/screen/class/add_activity_list.dart';
+import 'package:pickleapp/screen/page/activity_edit_temporary.dart';
 import 'package:pickleapp/theme.dart';
 
 class ActivityCart extends StatefulWidget {
@@ -25,8 +36,18 @@ class ActivityCart extends StatefulWidget {
 }
 
 class _ActivityCartState extends State<ActivityCart> {
+  String startTimeAlgorithm = "";
   bool _isCheckedAlgorithm = false;
+  bool _isStartExist = false;
   var logger = Logger();
+
+  List<AlgorithmSchedule> scheduleList = [];
+  List<AlgorithmSchedule> scheduleList2 = [];
+  List<AddActivityList> temporaryActiv = [];
+  List<AddActivityList> processedListWithStart = [];
+  List<AddActivityList> processedListWithoutStart = [];
+  List<AddActivityList> remainingList = [];
+  Map<String, List<AlgorithmSchedule>> groupedSchedule = {};
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
@@ -40,6 +61,19 @@ class _ActivityCartState extends State<ActivityCart> {
       return "Sand (Medium Priority)";
     } else {
       return "Water (Low Priority)";
+    }
+  }
+
+  // For determine priority high medium or so on
+  int getPriorityRank(String important, String urgent) {
+    if (important == "Important" && urgent == "Urgent") {
+      return 4;
+    } else if (important == "Important" && urgent == "Not Urgent") {
+      return 3;
+    } else if (important == "Not Important" && urgent == "Urgent") {
+      return 2;
+    } else {
+      return 1;
     }
   }
 
@@ -74,7 +108,7 @@ class _ActivityCartState extends State<ActivityCart> {
         return AlertDialog(
           title: Text(
             "Importance and Urgency Info",
-            style: subHeaderStyle,
+            style: subHeaderStyleBold,
           ),
           content: SizedBox(
             width: double.maxFinite,
@@ -117,6 +151,29 @@ class _ActivityCartState extends State<ActivityCart> {
     return formattedDate;
   }
 
+  // Change format time to hh:mm PM/AM
+  DateTime formattedActivityTimeOnly(String inptTime) {
+    DateTime formattedTime = DateFormat("hh:mm a").parse(inptTime);
+
+    return formattedTime;
+  }
+
+  String formattedTimes(DateTime datetime) {
+    DateTime dateTime = DateTime.parse(datetime.toString());
+    String formattedTime = DateFormat('hh:mm a').format(dateTime);
+    return formattedTime;
+  }
+
+  // Change format time to hh:mm PM/AM
+  String formattedActivityEndTimeOnly(String inptTime, int dur) {
+    DateTime formattedTime = DateFormat("hh:mm a").parse(inptTime);
+
+    String time =
+        DateFormat("hh:mm a").format(formattedTime.add(Duration(minutes: dur)));
+
+    return time;
+  }
+
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
   Future<void> openGoogleMaps(double lat, double lng) async {
@@ -127,6 +184,10 @@ class _ActivityCartState extends State<ActivityCart> {
     } else {
       throw 'Could not launch $url';
     }
+  }
+
+  void openFile(String path) {
+    OpenFile.open(path);
   }
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
@@ -149,7 +210,7 @@ class _ActivityCartState extends State<ActivityCart> {
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
   // Function to convert repeat interval to days
-  int _intervalToDays(String repeatInterval) {
+  int intervalToDays(String repeatInterval) {
     switch (repeatInterval) {
       case 'Daily':
         return 1;
@@ -162,23 +223,279 @@ class _ActivityCartState extends State<ActivityCart> {
     }
   }
 
-  // Save temporary activities to the firestore database
-  void setTemporaryActivitiesToFirestore() async {
-    List<Map<String, dynamic>> schedules = [];
+  Future<void> beneranTestAlgoritma() async {
+    var groupDate =
+        groupBy(widget.temporaryAct, (AddActivityList activ) => activ.date);
 
+    for (var data in groupDate.entries) {
+      var aktivitas = data.value;
+
+      setState(() {
+        scheduleList.clear();
+        processedListWithStart.clear();
+        processedListWithoutStart.clear();
+        remainingList.clear();
+        temporaryActiv.clear();
+
+        for (var s in aktivitas) {
+          temporaryActiv.add(AddActivityList(
+            userID: userID,
+            title: s.title,
+            impType: s.impType,
+            urgType: s.urgType,
+            date: s.date,
+            strTime: s.strTime,
+            duration: s.duration,
+          ));
+        }
+
+        processedListWithStart =
+            temporaryActiv.where((element) => element.strTime != null).toList();
+        processedListWithoutStart =
+            temporaryActiv.where((element) => element.strTime == null).toList();
+
+        print(processedListWithStart);
+        print(processedListWithoutStart);
+
+        if (processedListWithStart.isEmpty || processedListWithStart == []) {
+          _isStartExist = false;
+        } else {
+          _isStartExist = true;
+        }
+      });
+
+      if (_isStartExist == true) {
+        await testAlgoritma("");
+      } else {
+        await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.now(),
+        ).then((selectedTime) {
+          if (selectedTime != null) {
+            setState(() {
+              String period = selectedTime.period == DayPeriod.am ? 'AM' : 'PM';
+
+              int hours = selectedTime.hourOfPeriod;
+              int minutes = selectedTime.minute;
+
+              String formattedTime =
+                  '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')} $period';
+
+              startTimeAlgorithm = formattedTime;
+
+              testAlgoritma(startTimeAlgorithm);
+
+              print(startTimeAlgorithm);
+            });
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> testAlgoritma(String startInput) async {
+    AlgorithmSchedule? currentSchedule;
+
+    remainingList.addAll(processedListWithoutStart);
+
+    processedListWithStart.sort((a, b) =>
+        formattedActivityTimeOnly(a.strTime ?? "")
+            .compareTo(formattedActivityTimeOnly(b.strTime ?? "")));
+
+    DateTime date =
+        DateFormat("yyyy-MM-dd").parse(processedListWithStart.first.date);
+
+    DateTime currentTime = processedListWithStart.isNotEmpty
+        ? DateTime(
+            date.year,
+            date.month,
+            date.day,
+            formattedActivityTimeOnly(
+                    processedListWithStart.first.strTime ?? "")
+                .hour,
+            formattedActivityTimeOnly(
+                    processedListWithStart.first.strTime ?? "")
+                .minute,
+          )
+        : DateTime(
+            date.year,
+            date.month,
+            date.day,
+            formattedActivityTimeOnly(startInput).hour,
+            formattedActivityTimeOnly(startInput).minute,
+          );
+
+    while (processedListWithStart.isNotEmpty) {
+      AddActivityList currentActivity = processedListWithStart.removeAt(0);
+
+      DateTime date2 = DateFormat("yyyy-MM-dd").parse(currentActivity.date);
+      DateTime currentStartAct = DateTime(
+        date2.year,
+        date2.month,
+        date2.day,
+        formattedActivityTimeOnly(
+                currentActivity.strTime ?? currentTime.toString())
+            .hour,
+        formattedActivityTimeOnly(
+                currentActivity.strTime ?? currentTime.toString())
+            .minute,
+      );
+
+      DateTime? processedStartAct;
+      if (processedListWithStart.isNotEmpty) {
+        DateTime date3 =
+            DateFormat("yyyy-MM-dd").parse(processedListWithStart.first.date);
+        processedStartAct = DateTime(
+          date3.year,
+          date3.month,
+          date3.day,
+          formattedActivityTimeOnly(processedListWithStart.first.strTime ??
+                  currentTime.toString())
+              .hour,
+          formattedActivityTimeOnly(processedListWithStart.first.strTime ??
+                  currentTime.toString())
+              .minute,
+        );
+      }
+      if (currentTime.isBefore(currentStartAct) ||
+          currentTime.isAtSameMomentAs(currentStartAct)) {
+        while (currentActivity.duration > 0) {
+          if (processedListWithStart.isNotEmpty &&
+              processedStartAct != null &&
+              (processedStartAct
+                      .isBefore(currentTime.add(const Duration(minutes: 1))) ||
+                  processedStartAct.isAtSameMomentAs(
+                      currentTime.add(const Duration(minutes: 1))))) {
+            AddActivityList nextActivity = processedListWithStart.first;
+
+            if (getPriorityRank(nextActivity.impType!, nextActivity.urgType!) >
+                getPriorityRank(
+                    currentActivity.impType!, currentActivity.urgType!)) {
+              scheduleList.add(AlgorithmSchedule(
+                title: currentActivity.title,
+                impt: currentActivity.impType ?? "",
+                urgnt: currentActivity.urgType ?? "",
+                start: currentTime,
+                date: DateFormat('yyyy-MM-dd').format(currentTime),
+                end: currentTime.add(const Duration(minutes: 1)),
+              ));
+              remainingList.add(AddActivityList(
+                userID: userID,
+                title: currentActivity.title,
+                impType: currentActivity.impType,
+                urgType: currentActivity.urgType,
+                date: DateFormat('yyyy-MM-dd').format(currentTime),
+                duration: currentActivity.duration - 1,
+              ));
+              currentTime = currentTime.add(const Duration(minutes: 1));
+              break;
+            } else {
+              currentActivity.duration -= 1;
+              scheduleList.add(AlgorithmSchedule(
+                  title: currentActivity.title,
+                  impt: currentActivity.impType ?? "",
+                  urgnt: currentActivity.urgType ?? "",
+                  date: DateFormat('yyyy-MM-dd').format(currentTime),
+                  start: currentTime,
+                  end: currentTime.add(const Duration(minutes: 1))));
+              currentTime = currentTime.add(const Duration(minutes: 1));
+            }
+          } else {
+            currentActivity.duration -= 1;
+            scheduleList.add(AlgorithmSchedule(
+                impt: currentActivity.impType ?? "",
+                urgnt: currentActivity.urgType ?? "",
+                title: currentActivity.title,
+                date: DateFormat('yyyy-MM-dd').format(currentTime),
+                start: currentTime,
+                end: currentTime.add(const Duration(minutes: 1))));
+            currentTime = currentTime.add(const Duration(minutes: 1));
+          }
+        }
+      } else {
+        remainingList.add(AddActivityList(
+          userID: userID,
+          title: currentActivity.title,
+          impType: currentActivity.impType,
+          urgType: currentActivity.urgType,
+          date: DateFormat('yyyy-MM-dd').format(currentTime),
+          duration: currentActivity.duration,
+        ));
+      }
+    }
+
+    while (remainingList.isNotEmpty) {
+      remainingList.sort((a, b) => getPriorityRank(b.impType!, b.urgType!)
+          .compareTo(getPriorityRank(a.impType!, a.urgType!)));
+      AddActivityList currentActivity = remainingList.removeAt(0);
+      while (currentActivity.duration > 0) {
+        currentActivity.duration -= 1;
+        scheduleList.add(AlgorithmSchedule(
+            title: currentActivity.title,
+            impt: currentActivity.impType ?? "",
+            urgnt: currentActivity.urgType ?? "",
+            date: DateFormat('yyyy-MM-dd').format(currentTime),
+            start: currentTime,
+            end: currentTime.add(const Duration(minutes: 1))));
+        currentTime = currentTime.add(const Duration(minutes: 1));
+      }
+    }
+
+    for (var s in scheduleList) {
+      print("Schedule: $s");
+    }
+
+    for (var schedule in scheduleList) {
+      if (currentSchedule == null) {
+        currentSchedule = schedule;
+      } else {
+        if (currentSchedule.title == schedule.title &&
+            currentSchedule.date == schedule.date &&
+            currentSchedule.end == schedule.start) {
+          currentSchedule = AlgorithmSchedule(
+            title: currentSchedule.title,
+            start: currentSchedule.start,
+            impt: currentSchedule.impt,
+            urgnt: currentSchedule.urgnt,
+            end: schedule.end,
+            date: currentSchedule.date,
+          );
+        } else {
+          scheduleList2.add(currentSchedule);
+          currentSchedule = schedule;
+        }
+      }
+    }
+
+    if (currentSchedule != null) {
+      scheduleList2.add(currentSchedule);
+    }
+
+    for (var sa in scheduleList2) {
+      print("$sa");
+    }
+  }
+
+  Future<void> setToFirestoreWithAlgorithm() async {
     try {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+
       for (var act in widget.temporaryAct) {
         DocumentReference actID =
             await FirebaseFirestore.instance.collection('activities').add({
           'title': act.title,
-          'important_type': act.imp_type,
-          'urgent_type': act.urg_type,
+          'important_type': act.impType,
+          'urgent_type': act.urgType,
           'date': act.date,
-          'start_time': act.str_time,
+          'start_time': act.strTime,
           'duration': act.duration,
-          'repeat_interval': act.rpt_intv,
-          'repeat_duration': act.rpt_dur ?? 0,
-          'timezones': act.timezone,
+          'repeat_interval': act.rptIntv,
+          'repeat_duration': act.rptDur ?? 0,
           'categories_id': act.cat ?? "",
           'user_id': act.userID,
         });
@@ -201,91 +518,765 @@ class _ActivityCartState extends State<ActivityCart> {
         }
 
         for (Files file in act.files ?? []) {
+          String folder = "user_files/$userID/${actID.id}";
+          String filePath = "$folder/${file.name}";
           await FirebaseFirestore.instance.collection('files').add({
             'title': file.name,
-            'path': file.path,
+            'path': "$folder/${file.name}",
             'activities_id': actID.id,
           });
+          await FirebaseStorage.instance.ref(filePath).putFile(File(file.path));
         }
 
-        if (_isCheckedAlgorithm == false) {
-          for (var i = 0; i < (act.rpt_dur ?? 1); i++) {
-            DateTime startTime = DateFormat("yyyy-MM-dd hh:mm a")
-                .parse("${act.date} ${act.str_time ?? "12:00 AM"}");
-            tz.Location timezone = tz.getLocation(act.timezone);
-            startTime = tz.TZDateTime.from(startTime, timezone)
-                .add(Duration(
-                    days: i * _intervalToDays(act.rpt_intv ?? "Never")))
-                .toUtc();
+        for (var sch in scheduleList2) {
+          if (act.title == sch.title &&
+              act.urgType == sch.urgnt &&
+              act.impType == sch.impt) {
+            for (var i = 0; i < (act.rptDur ?? 1); i++) {
+              DateTime startTime = DateFormat("yyyy-MM-dd hh:mm a")
+                  .parse("${sch.date} ${formattedTimes(sch.start)}");
+              DateTime endTime = DateFormat("yyyy-MM-dd hh:mm a")
+                  .parse("${sch.date} ${formattedTimes(sch.end)}");
+              DateTime startTimeReal;
+              DateTime endTimeReal;
+              if (act.rptIntv == "Daily") {
+                startTimeReal = startTime.add(Duration(days: i));
+                endTimeReal = endTime.add(Duration(days: i));
+              } else if (act.rptIntv == "Weekly") {
+                startTimeReal = startTime.add(Duration(days: 7 * i));
+                endTimeReal = endTime.add(Duration(days: 7 * i));
+              } else if (act.rptIntv == "Monthly") {
+                startTimeReal = startTime.add(Duration(days: 30 * i));
+                endTimeReal = endTime.add(Duration(days: 7 * i));
+              } else if (act.rptIntv == "Yearly") {
+                startTimeReal = startTime.add(Duration(days: 365 * i));
+                endTimeReal = endTime.add(Duration(days: 7 * i));
+              } else {
+                startTimeReal = startTime;
+                endTimeReal = endTime;
+              }
 
-            DateTime endTime = startTime.add(Duration(minutes: act.duration));
-
-            while (endTime.hour == 23 && endTime.minute > 59) {
-              schedules.add({
-                'start_time': Timestamp.fromDate(startTime),
-                'end_time': Timestamp.fromDate(DateTime(
-                    startTime.year, startTime.month, startTime.day, 23, 59)),
-                'activity_id': actID.id,
+              DocumentReference schID = await FirebaseFirestore.instance
+                  .collection('scheduled_activities')
+                  .add({
+                'actual_start_time': Timestamp.fromDate(startTimeReal),
+                'actual_end_time': Timestamp.fromDate(endTimeReal),
+                'activities_id': actID.id,
               });
+              for (Notifications notif in act.notif ?? []) {
+                DocumentReference notifRef = await FirebaseFirestore.instance
+                    .collection('notifications')
+                    .add({
+                  'minutes_before': notif.minute,
+                  'scheduled_activities_id': schID.id,
+                });
 
-              int remainingMinutes = endTime
-                  .difference(
-                      DateTime(endTime.year, endTime.month, endTime.day, 0, 0))
-                  .inMinutes;
+                DateTime notifTime =
+                    startTimeReal.subtract(Duration(minutes: notif.minute));
 
-              startTime = DateTime(
-                  startTime.year, startTime.month, startTime.day + 1, 0, 0);
-              startTime = tz.TZDateTime.from(startTime, timezone).toUtc();
-
-              endTime = startTime.add(Duration(minutes: remainingMinutes));
+                await AwesomeNotifications().createNotification(
+                  content: NotificationContent(
+                    id: notifRef.id.hashCode,
+                    channelKey: 'activity_reminder',
+                    title: "Upcoming Activity - ${act.title}",
+                    body:
+                        "You have an activity starting soon at $startTimeReal",
+                    notificationLayout: NotificationLayout.BigText,
+                    criticalAlert: true,
+                    wakeUpScreen: true,
+                    category: NotificationCategory.Reminder,
+                  ),
+                  schedule: NotificationCalendar.fromDate(
+                    date: notifTime,
+                    preciseAlarm: true,
+                    allowWhileIdle: true,
+                  ),
+                );
+              }
             }
-
-            schedules.add({
-              'start_time': Timestamp.fromDate(startTime),
-              'end_time': Timestamp.fromDate(endTime),
-              'activity_id': actID.id,
-            });
           }
         }
-
-        for (var newSch in schedules) {
-          DocumentReference schID = await FirebaseFirestore.instance
-              .collection('scheduled_activities')
-              .add({
-            'actual_start_time': newSch['start_time'],
-            'actual_end_time': newSch['end_time'],
-            'activities_id': newSch['activity_id'],
-          });
-
-          for (Notifications notif in act.notif ?? []) {
-            await FirebaseFirestore.instance.collection('notifications').add({
-              'minutes_before': notif.minute,
-              'shceduled_activities_id': schID.id,
-            });
-          }
-        }
-
-        // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Your activities successfuly scheduled'),
-          ),
-        );
-
-        // ignore: use_build_context_synchronously
-        Navigator.popUntil(context, ModalRoute.withName('/'));
       }
+
+      Navigator.of(context).pop();
+      Navigator.of(context).pop();
+      Navigator.of(context).pop();
+      Navigator.pop(context, true);
+
+      AlertInformation.showDialogBox(
+          context: context,
+          title: "Successfully Scheduled",
+          message: "All of your activities successfully scheduled.");
     } catch (e) {
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-        ),
+      Navigator.of(context).pop();
+      Navigator.of(context).pop();
+
+      AlertInformation.showDialogBox(
+        context: context,
+        title: "Error",
+        message: "$e",
       );
     }
   }
 
+  // Save temporary activities to the firestore database
+  Future<void> setToFirestoreWithoutAlogirhtm(BuildContext context) async {
+    try {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+
+      for (var act in widget.temporaryAct) {
+        if (act.strTime == null || act.strTime == "") {
+          Navigator.of(context).pop();
+          showInfoDialog("Can't Schedule",
+              "If you are NOT USING the schedule RECOMMENDATION FEATURE, please ensure  all activities have a start time.");
+          return;
+        }
+      }
+
+      for (var act in widget.temporaryAct) {
+        DocumentReference actID =
+            await FirebaseFirestore.instance.collection('activities').add({
+          'title': act.title,
+          'important_type': act.impType,
+          'urgent_type': act.urgType,
+          'date': act.date,
+          'start_time': act.strTime,
+          'duration': act.duration,
+          'repeat_interval': act.rptIntv,
+          'repeat_duration': act.rptDur ?? 0,
+          'categories_id': act.cat ?? "",
+          'user_id': act.userID,
+        });
+
+        for (Locations loc in act.locations ?? []) {
+          await FirebaseFirestore.instance.collection('locations').add({
+            'address': loc.address,
+            'latitude': loc.latitude,
+            'longitude': loc.longitude,
+            'activities_id': actID.id,
+          });
+        }
+
+        for (Tasks task in act.tasks ?? []) {
+          await FirebaseFirestore.instance.collection('tasks').add({
+            'title': task.task,
+            'status': task.status,
+            'activities_id': actID.id,
+          });
+        }
+
+        for (Files file in act.files ?? []) {
+          String folder = "user_files/$userID/${actID.id}";
+          String filePath = "$folder/${file.name}";
+          await FirebaseFirestore.instance.collection('files').add({
+            'title': file.name,
+            'path': "$folder/${file.name}",
+            'activities_id': actID.id,
+          });
+          await FirebaseStorage.instance.ref(filePath).putFile(File(file.path));
+        }
+
+        for (var i = 0; i < (act.rptDur ?? 1); i++) {
+          DateTime startTime = DateFormat("yyyy-MM-dd hh:mm a")
+              .parse("${act.date} ${act.strTime ?? '12:00 AM'}");
+          DateTime startTimeReal;
+          if (act.rptIntv == "Daily") {
+            startTimeReal = startTime.add(Duration(days: i));
+          } else if (act.rptIntv == "Weekly") {
+            startTimeReal = startTime.add(Duration(days: 7 * i));
+          } else if (act.rptIntv == "Monthly") {
+            startTimeReal = startTime.add(Duration(days: 30 * i));
+          } else if (act.rptIntv == "Yearly") {
+            startTimeReal = startTime.add(Duration(days: 365 * i));
+          } else {
+            startTimeReal = startTime;
+          }
+
+          DateTime endTime = startTimeReal.add(Duration(minutes: act.duration));
+
+          while (endTime.isAfter(DateTime(startTimeReal.year,
+              startTimeReal.month, startTimeReal.day, 23, 59))) {
+            DateTime endOfDay = DateTime(startTimeReal.year,
+                startTimeReal.month, startTimeReal.day, 23, 59);
+            int remainingMinutes = endTime.difference(endOfDay).inMinutes;
+
+            DocumentReference schID = await FirebaseFirestore.instance
+                .collection('scheduled_activities')
+                .add({
+              'actual_start_time': Timestamp.fromDate(startTimeReal),
+              'actual_end_time': Timestamp.fromDate(endOfDay),
+              'activities_id': actID.id,
+            });
+
+            for (Notifications notif in act.notif ?? []) {
+              DocumentReference notify = await FirebaseFirestore.instance
+                  .collection('notifications')
+                  .add({
+                'minutes_before': notif.minute,
+                'scheduled_activities_id': schID.id,
+              });
+
+              DateTime notiftime =
+                  startTimeReal.subtract(Duration(minutes: notif.minute));
+
+              await AwesomeNotifications().createNotification(
+                content: NotificationContent(
+                  id: notify.id.hashCode,
+                  channelKey: 'activity_reminder',
+                  title: "Upcoming Activity - ${act.title}",
+                  body: "You have an activity starting soon at $startTime",
+                  notificationLayout: NotificationLayout.BigText,
+                  criticalAlert: true,
+                  wakeUpScreen: true,
+                  category: NotificationCategory.Reminder,
+                ),
+                schedule: NotificationCalendar.fromDate(
+                  date: notiftime,
+                  preciseAlarm: true,
+                  allowWhileIdle: true,
+                ),
+              );
+            }
+
+            startTimeReal = DateTime(startTimeReal.year, startTimeReal.month,
+                startTimeReal.day + 1, 0, 0);
+            endTime = startTimeReal.add(Duration(minutes: remainingMinutes));
+          }
+          DocumentReference schID = await FirebaseFirestore.instance
+              .collection('scheduled_activities')
+              .add({
+            'actual_start_time': Timestamp.fromDate(startTimeReal),
+            'actual_end_time': Timestamp.fromDate(endTime),
+            'activities_id': actID.id,
+          });
+          for (Notifications notif in act.notif ?? []) {
+            DocumentReference notifRef = await FirebaseFirestore.instance
+                .collection('notifications')
+                .add({
+              'minutes_before': notif.minute,
+              'scheduled_activities_id': schID.id,
+            });
+
+            DateTime notifTime =
+                startTimeReal.subtract(Duration(minutes: notif.minute));
+
+            await AwesomeNotifications().createNotification(
+              content: NotificationContent(
+                id: notifRef.id.hashCode,
+                channelKey: 'activity_reminder',
+                title: "Upcoming Activity - ${act.title}",
+                body: "You have an activity starting soon at $startTimeReal",
+                notificationLayout: NotificationLayout.BigText,
+                criticalAlert: true,
+                wakeUpScreen: true,
+                category: NotificationCategory.Reminder,
+              ),
+              schedule: NotificationCalendar.fromDate(
+                date: notifTime,
+                preciseAlarm: true,
+                allowWhileIdle: true,
+              ),
+            );
+          }
+        }
+      }
+
+      Navigator.of(context).pop();
+      Navigator.of(context).pop();
+      Navigator.pop(context, true);
+
+      AlertInformation.showDialogBox(
+        context: context,
+        title: "Successfully Scheduled",
+        message: "All of your activities successfully scheduled.",
+      );
+    } catch (e) {
+      Navigator.of(context).pop();
+
+      AlertInformation.showDialogBox(
+        context: context,
+        title: "Error",
+        message: "$e",
+      );
+    }
+  }
+
+  void showInfoDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext ctxt) {
+        return AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: subHeaderStyleBold,
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  Navigator.of(ctxt).pop();
+                },
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: textStyle,
+          ),
+        );
+      },
+    );
+  }
+
+  void tabAlgorithm() {
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("Recommended Schedule", style: subHeaderStyleBold),
+            content: SizedBox(
+              width: double.minPositive,
+              height: MediaQuery.of(context).size.height * 0.5,
+              child: DefaultTabController(
+                length: 2,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TabBar(
+                      tabs: [
+                        Tab(
+                          child: Text(
+                            "Before",
+                            style: textStyleBold,
+                          ),
+                        ),
+                        Tab(
+                          child: Text(
+                            "After",
+                            style: textStyleBold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          scheduleBefore(),
+                          scheduleAfter(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              GestureDetector(
+                onTap: () {
+                  setToFirestoreWithAlgorithm();
+                },
+                child: Container(
+                  alignment: Alignment.center,
+                  width: double.infinity,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    color: const Color.fromARGB(255, 3, 0, 66),
+                  ),
+                  child: // Space between icon and text
+                      Text(
+                    'Schedule it',
+                    style: textStyleBoldWhite,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    // currentSchedule == null;
+                    scheduleList.clear();
+                    scheduleList2.clear();
+                    processedListWithStart.clear();
+                    processedListWithoutStart.clear();
+                    remainingList.clear();
+                    temporaryActiv.clear();
+                    groupedSchedule.clear();
+                  });
+                  print(scheduleList2);
+                  Navigator.of(context).pop();
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(top: 5),
+                  alignment: Alignment.center,
+                  width: double.infinity,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      width: 1,
+                      color: const Color.fromARGB(255, 3, 0, 66),
+                    ),
+                  ),
+                  child: Text(
+                    'Cancel',
+                    style: textStyleBold,
+                  ),
+                ),
+              ),
+            ],
+          );
+        });
+  }
+
+  Widget scheduleBefore() {
+    return SingleChildScrollView(
+      child: Column(
+        children: widget.temporaryAct.map(
+          (act) {
+            return Container(
+              padding: const EdgeInsets.only(
+                left: 10,
+                right: 10,
+                bottom: 10,
+                top: 10,
+              ),
+              margin: const EdgeInsets.only(top: 5),
+              decoration: BoxDecoration(
+                color: getPriorityColor(act.impType, act.urgType),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    act.title,
+                    style: subHeaderStyleBold,
+                  ),
+                  Text(
+                    act.date,
+                    style: textStyleBold,
+                  ),
+                  act.strTime == null
+                      ? Text(
+                          "Not Decided",
+                          style: textStyle,
+                        )
+                      : Text(
+                          "${act.strTime ?? 0} - ${formattedActivityEndTimeOnly(act.strTime ?? "", act.duration)}",
+                          style: textStyle,
+                        ),
+                ],
+              ),
+            );
+          },
+        ).toList(),
+      ),
+    );
+  }
+
+  Widget scheduleAfter() {
+    return ListView.builder(
+      itemCount: scheduleList2.length,
+      itemBuilder: (context, index) {
+        AlgorithmSchedule sch = scheduleList2[index];
+        return Container(
+          padding: const EdgeInsets.only(
+            left: 10,
+            right: 10,
+            bottom: 10,
+            top: 10,
+          ),
+          margin: const EdgeInsets.only(top: 5),
+          decoration: BoxDecoration(
+            color: getPriorityColor(sch.impt, sch.urgnt),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      sch.title,
+                      style: subHeaderStyleBold,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  // Row(
+                  //   children: [
+                  //     IconButton(
+                  //       icon: const Icon(
+                  //         Icons.edit,
+                  //         color: Colors.black,
+                  //       ),
+                  //       onPressed: () {
+                  //         editSchedule(index);
+                  //       },
+                  //     ),
+                  //     IconButton(
+                  //       icon: const Icon(
+                  //         Icons.delete,
+                  //         color: Colors.black,
+                  //       ),
+                  //       onPressed: () {
+                  //         setState(() {
+                  //           deleteSchedule(index);
+                  //         });
+                  //       },
+                  //     ),
+                  //   ],
+                  // ),
+                ],
+              ),
+              Text(
+                sch.date,
+                style: textStyleBold,
+              ),
+              Text(
+                "${formattedTimes(sch.start)} - ${formattedTimes(sch.end)}",
+                style: textStyleBold,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // void deleteSchedule(int index) {
+  //   setState(() {
+  //     scheduleList2.removeAt(index);
+  //   });
+  // }
+
+  // void editSchedule(int index) {
+  //   final schedule = scheduleList2[index];
+  //   final startController =
+  //       TextEditingController(text: formattedTimes(schedule.start));
+  //   final endController =
+  //       TextEditingController(text: formattedTimes(schedule.end));
+
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) {
+  //       return AlertDialog(
+  //         title: Text('Edit Schedule'),
+  //         content: Form(
+  //           key: _formKey,
+  //           child: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             children: [
+  //               GestureDetector(
+  //                 onTap: () {
+  //                   showTimePicker(
+  //                     context: context,
+  //                     initialTime: TimeOfDay.now(),
+  //                   ).then((selectedTime) {
+  //                     if (selectedTime != null) {
+  //                       setState(() {
+  //                         // Convert selectedTime to AM/PM format
+  //                         String period =
+  //                             selectedTime.period == DayPeriod.am ? 'AM' : 'PM';
+  //                         // Extract hours and minutes
+  //                         int hours = selectedTime.hourOfPeriod;
+  //                         int minutes = selectedTime.minute;
+  //                         // Format the time as a string
+  //                         String formattedTime =
+  //                             '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')} $period';
+  //                         // Update the text field with the selected time
+  //                         startController.text = formattedTime;
+
+  //                         print(startController.text);
+  //                       });
+  //                     }
+  //                   });
+  //                 },
+  //                 child: Container(
+  //                   padding: const EdgeInsets.only(
+  //                     left: 10,
+  //                     right: 10,
+  //                   ),
+  //                   alignment: Alignment.centerLeft,
+  //                   height: 50,
+  //                   width: double.infinity,
+  //                   decoration: BoxDecoration(
+  //                     border: Border.all(
+  //                       color: Colors.grey,
+  //                       width: 1.0,
+  //                     ),
+  //                     borderRadius: BorderRadius.circular(15),
+  //                   ),
+  //                   child: Row(
+  //                     children: [
+  //                       Expanded(
+  //                         flex: 6,
+  //                         child: TextFormField(
+  //                           autofocus: false,
+  //                           readOnly: true,
+  //                           keyboardType: TextInputType.text,
+  //                           textCapitalization: TextCapitalization.sentences,
+  //                           decoration: InputDecoration(
+  //                             hintText: "When do you want to start?",
+  //                             hintStyle: textStyleGrey,
+  //                           ),
+  //                           validator: (v) {
+  //                             if (v == null || v.isEmpty) {
+  //                               return 'Opps, You need to fill this';
+  //                             } else {
+  //                               return null;
+  //                             }
+  //                           },
+  //                           controller: startController,
+  //                         ),
+  //                       ),
+  //                       const SizedBox(
+  //                         width: 5,
+  //                       ),
+  //                       const Expanded(
+  //                         flex: 2,
+  //                         child: Icon(
+  //                           Icons.access_time,
+  //                           color: Colors.grey,
+  //                         ),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                 ),
+  //               ),
+  //               GestureDetector(
+  //                 onTap: () {
+  //                   showTimePicker(
+  //                     context: context,
+  //                     initialTime: TimeOfDay.now(),
+  //                   ).then((selectedTime) {
+  //                     if (selectedTime != null) {
+  //                       setState(() {
+  //                         // Convert selectedTime to AM/PM format
+  //                         String period =
+  //                             selectedTime.period == DayPeriod.am ? 'AM' : 'PM';
+  //                         // Extract hours and minutes
+  //                         int hours = selectedTime.hourOfPeriod;
+  //                         int minutes = selectedTime.minute;
+  //                         // Format the time as a string
+  //                         String formattedTime =
+  //                             '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')} $period';
+  //                         // Update the text field with the selected time
+  //                         endController.text = formattedTime;
+
+  //                         print(endController.text);
+  //                       });
+  //                     }
+  //                   });
+  //                 },
+  //                 child: Container(
+  //                   padding: const EdgeInsets.only(
+  //                     left: 10,
+  //                     right: 10,
+  //                   ),
+  //                   alignment: Alignment.centerLeft,
+  //                   height: 50,
+  //                   width: double.infinity,
+  //                   decoration: BoxDecoration(
+  //                     border: Border.all(
+  //                       color: Colors.grey,
+  //                       width: 1.0,
+  //                     ),
+  //                     borderRadius: BorderRadius.circular(15),
+  //                   ),
+  //                   child: Row(
+  //                     children: [
+  //                       Expanded(
+  //                         flex: 6,
+  //                         child: TextFormField(
+  //                           autofocus: false,
+  //                           readOnly: true,
+  //                           keyboardType: TextInputType.text,
+  //                           textCapitalization: TextCapitalization.sentences,
+  //                           decoration: InputDecoration(
+  //                             hintText: "When do you want to end?",
+  //                             hintStyle: textStyleGrey,
+  //                           ),
+  //                           validator: (v) {
+  //                             if (v == null || v.isEmpty) {
+  //                               return 'Opps, You need to fill this';
+  //                             } else {
+  //                               return null;
+  //                             }
+  //                           },
+  //                           controller: endController,
+  //                         ),
+  //                       ),
+  //                       const SizedBox(
+  //                         width: 5,
+  //                       ),
+  //                       const Expanded(
+  //                         flex: 2,
+  //                         child: Icon(
+  //                           Icons.access_time,
+  //                           color: Colors.grey,
+  //                         ),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //             },
+  //             child: const Text('Cancel'),
+  //           ),
+  //           TextButton(
+  //             onPressed: () {
+  //               if (_formKey.currentState != null &&
+  //                   !_formKey.currentState!.validate()) {
+  //                 ScaffoldMessenger.of(context).showSnackBar(
+  //                   const SnackBar(
+  //                     content: Text("Kindly complete all mandatory fields."),
+  //                   ),
+  //                 );
+  //                 FocusScope.of(context).unfocus();
+  //               } else {
+  //                 setState(() {
+  //                   scheduleList2[index] = AlgorithmSchedule(
+  //                     title: schedule.title,
+  //                     start: DateFormat('hh:mm a').parse(startController.text),
+  //                     end: DateFormat('hh:mm a').parse(endController.text),
+  //                     date: schedule.date,
+  //                     impt: schedule.impt,
+  //                     urgnt: schedule.urgnt,
+  //                   );
+  //                   scheduleAfter();
+  //                 });
+  //                 Navigator.of(context).pop();
+  //               }
+  //             },
+  //             child: Text('Save'),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
+
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
+
+  @override
+  void initState() {
+    super.initState();
+    print("Temporary Activity: ${widget.temporaryAct}");
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -293,7 +1284,7 @@ class _ActivityCartState extends State<ActivityCart> {
       appBar: AppBar(
         title: Text(
           'Activities Cart',
-          style: screenTitleStyle,
+          style: subHeaderStyleBold,
         ),
       ),
       body: Container(
@@ -314,15 +1305,16 @@ class _ActivityCartState extends State<ActivityCart> {
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(10)),
+                            borderRadius: BorderRadius.circular(15)),
                         child: Text(
                           "There is no activity yet",
-                          style: textStyle,
+                          style: textStyleBold,
                         ),
                       )
                     : SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: List.generate(
                             widget.temporaryAct.length,
                             (index) {
@@ -330,23 +1322,24 @@ class _ActivityCartState extends State<ActivityCart> {
                               return FutureBuilder<String>(
                                 future: catId != null
                                     ? getCategoryData(catId)
-                                    : Future.value('Unknown'),
+                                    : Future.value('Not Decided'),
                                 builder: (context, snapshot) => Row(
                                   children: [
                                     Container(
                                       width: 350,
+                                      margin: const EdgeInsets.only(right: 5),
                                       alignment: Alignment.topLeft,
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         border: Border.all(
                                           color: getPriorityColor(
-                                            widget.temporaryAct[index].imp_type,
-                                            widget.temporaryAct[index].urg_type,
+                                            widget.temporaryAct[index].impType,
+                                            widget.temporaryAct[index].urgType,
                                           ),
                                           width: 3,
                                         ),
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(15),
                                       ),
                                       child: Column(
                                         children: [
@@ -363,7 +1356,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                                         BorderRadius.circular(
                                                             20),
                                                     color: const Color.fromARGB(
-                                                        255, 166, 204, 255),
+                                                        255, 3, 0, 66),
                                                   ),
                                                   padding:
                                                       const EdgeInsets.only(
@@ -376,7 +1369,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                                     formatDate(widget
                                                         .temporaryAct[index]
                                                         .date),
-                                                    style: textStyle,
+                                                    style: textStyleBoldWhite,
                                                   ),
                                                 ),
                                                 Row(
@@ -389,14 +1382,10 @@ class _ActivityCartState extends State<ActivityCart> {
                                                             context,
                                                             MaterialPageRoute(
                                                               builder: (context) =>
-                                                                  ActivityEdits(
+                                                                  ActivityEditTemporaries(
                                                                 activity: widget
                                                                         .temporaryAct[
                                                                     index],
-                                                                userID: widget
-                                                                    .temporaryAct[
-                                                                        index]
-                                                                    .userID,
                                                               ),
                                                             ),
                                                           ).then((value) {
@@ -422,12 +1411,9 @@ class _ActivityCartState extends State<ActivityCart> {
                                           ),
                                           SizedBox(
                                             width: double.infinity,
-                                            child: Expanded(
-                                              child: Text(
-                                                widget
-                                                    .temporaryAct[index].title,
-                                                style: headerStyle,
-                                              ),
+                                            child: Text(
+                                              widget.temporaryAct[index].title,
+                                              style: screenTitleStyle,
                                             ),
                                           ),
                                           const SizedBox(
@@ -447,18 +1433,18 @@ class _ActivityCartState extends State<ActivityCart> {
                                                       BorderRadius.circular(20),
                                                   color: getPriorityColor(
                                                     widget.temporaryAct[index]
-                                                        .imp_type,
+                                                        .impType,
                                                     widget.temporaryAct[index]
-                                                        .urg_type,
+                                                        .urgType,
                                                   ),
                                                 ),
                                                 child: Text(
                                                   getPriority(
                                                       widget.temporaryAct[index]
-                                                          .imp_type,
+                                                          .impType,
                                                       widget.temporaryAct[index]
-                                                          .urg_type),
-                                                  style: textStyle,
+                                                          .urgType),
+                                                  style: textStyleBold,
                                                 ),
                                               ),
                                               const SizedBox(
@@ -486,8 +1472,11 @@ class _ActivityCartState extends State<ActivityCart> {
                                             decoration: BoxDecoration(
                                               borderRadius:
                                                   BorderRadius.circular(20),
-                                              color: Colors.grey[
-                                                  200], // Change the color with activity color
+                                              color: const Color.fromARGB(
+                                                  255,
+                                                  3,
+                                                  0,
+                                                  66), // Change the color with activity color
                                             ),
                                             // Left side and right side
                                             child: Row(
@@ -516,8 +1505,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                                                     .blue[100],
                                                               ),
                                                               child: Icon(
-                                                                Icons
-                                                                    .calendar_today_rounded,
+                                                                Icons.timer,
                                                                 color: Colors
                                                                     .blue[700],
                                                               ),
@@ -534,16 +1522,16 @@ class _ActivityCartState extends State<ActivityCart> {
                                                                       .start,
                                                               children: [
                                                                 Text(
-                                                                  "Start time",
+                                                                  "Start",
                                                                   style:
                                                                       textStyleGrey,
                                                                 ),
                                                                 Text(
                                                                   widget.temporaryAct[index]
-                                                                          .str_time ??
-                                                                      'Unknown',
+                                                                          .strTime ??
+                                                                      'Not Decided',
                                                                   style:
-                                                                      textStyle,
+                                                                      textStyleWhite,
                                                                 ),
                                                               ],
                                                             ),
@@ -552,60 +1540,6 @@ class _ActivityCartState extends State<ActivityCart> {
                                                       ),
                                                       const SizedBox(
                                                         height: 10,
-                                                      ),
-                                                      // Timezone
-                                                      Row(
-                                                        children: [
-                                                          Expanded(
-                                                            flex: 3,
-                                                            child: Container(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(10),
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            10),
-                                                                color: Colors
-                                                                    .green[100],
-                                                              ),
-                                                              child: Icon(
-                                                                Icons
-                                                                    .category_rounded,
-                                                                color: Colors
-                                                                    .green[700],
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          const SizedBox(
-                                                            width: 10,
-                                                          ),
-                                                          Expanded(
-                                                            flex: 6,
-                                                            child: Column(
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment
-                                                                      .start,
-                                                              children: [
-                                                                Text(
-                                                                  "Timezone",
-                                                                  style:
-                                                                      textStyleGrey,
-                                                                ),
-                                                                Text(
-                                                                  widget
-                                                                      .temporaryAct[
-                                                                          index]
-                                                                      .timezone,
-                                                                  style:
-                                                                      textStyle,
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ],
                                                       ),
                                                       const SizedBox(
                                                         height: 10,
@@ -657,7 +1591,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                                                   snapshot.data ??
                                                                       'Wait...',
                                                                   style:
-                                                                      textStyle,
+                                                                      textStyleWhite,
                                                                 ),
                                                               ],
                                                             ),
@@ -692,8 +1626,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                                                     100],
                                                               ),
                                                               child: Icon(
-                                                                Icons
-                                                                    .calendar_today_rounded,
+                                                                Icons.timelapse,
                                                                 color: Colors
                                                                         .purple[
                                                                     700],
@@ -718,7 +1651,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                                                 Text(
                                                                   "${widget.temporaryAct[index].duration.toString()} minutes",
                                                                   style:
-                                                                      textStyle,
+                                                                      textStyleWhite,
                                                                 ),
                                                               ],
                                                             ),
@@ -772,7 +1705,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                                                 Text(
                                                                   "${widget.temporaryAct[index].tasks?.length.toString() ?? 0} Tasks",
                                                                   style:
-                                                                      textStyle,
+                                                                      textStyleWhite,
                                                                 ),
                                                               ],
                                                             ),
@@ -823,9 +1756,9 @@ class _ActivityCartState extends State<ActivityCart> {
                                                                       textStyleGrey,
                                                                 ),
                                                                 Text(
-                                                                  "${widget.temporaryAct[index].rpt_intv ?? 'Never'} ${widget.temporaryAct[index].rpt_dur ?? 0}X",
+                                                                  "${widget.temporaryAct[index].rptIntv ?? 'Never'} ${widget.temporaryAct[index].rptDur ?? 0}X",
                                                                   style:
-                                                                      textStyle,
+                                                                      textStyleWhite,
                                                                 ),
                                                               ],
                                                             ),
@@ -846,23 +1779,36 @@ class _ActivityCartState extends State<ActivityCart> {
                                             width: double.infinity,
                                             child: Text(
                                               "Attachment Files",
-                                              style: subHeaderStyle,
+                                              style: textStyleBold,
                                             ),
                                           ),
                                           // Attachment Files - Content
-                                          Container(
+                                          SizedBox(
                                             width: double.infinity,
-                                            margin: const EdgeInsets.only(
-                                              left: 20,
-                                              right: 20,
-                                            ),
-                                            alignment: Alignment.topLeft,
                                             //Listbuilder bellow
                                             child: widget.temporaryAct[index]
                                                         .files?.isEmpty ??
                                                     true
-                                                ? const Text(
-                                                    "There are no files added")
+                                                ? Container(
+                                                    width: double.infinity,
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                      top: 5,
+                                                      bottom: 5,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              15),
+                                                      color: Colors.grey[200],
+                                                    ),
+                                                    child: Text(
+                                                      "There are no files added",
+                                                      style: textStyle,
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                    ),
+                                                  )
                                                 : Column(
                                                     children: (widget
                                                                 .temporaryAct[
@@ -872,70 +1818,51 @@ class _ActivityCartState extends State<ActivityCart> {
                                                         .map((file) {
                                                       return GestureDetector(
                                                         onTap: () {
-                                                          // Open the file
-                                                          OpenFile.open(
-                                                              file.path);
+                                                          openFile(file.path);
                                                         },
-                                                        child: Column(
-                                                          children: [
-                                                            Container(
-                                                              width: double
-                                                                  .infinity,
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(5),
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            10),
-                                                                color: Colors
-                                                                    .grey[200],
+                                                        child: Container(
+                                                          width:
+                                                              double.infinity,
+                                                          margin:
+                                                              const EdgeInsets
+                                                                  .only(
+                                                                  bottom: 5),
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .all(5),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        15),
+                                                            color: Colors
+                                                                .grey[200],
+                                                          ),
+                                                          child: Row(
+                                                            children: [
+                                                              const Expanded(
+                                                                flex: 2,
+                                                                child: Icon(
+                                                                  Icons
+                                                                      .file_present_rounded,
+                                                                  color: Colors
+                                                                      .black,
+                                                                ),
                                                               ),
-                                                              child: Row(
-                                                                children: [
-                                                                  Expanded(
-                                                                    flex: 2,
-                                                                    child:
-                                                                        Container(
-                                                                      padding: const EdgeInsets
-                                                                          .all(
-                                                                          10),
-                                                                      decoration:
-                                                                          BoxDecoration(
-                                                                        borderRadius:
-                                                                            BorderRadius.circular(10),
-                                                                        color: Colors
-                                                                            .purple[100],
-                                                                      ),
-                                                                      child:
-                                                                          Icon(
-                                                                        Icons
-                                                                            .file_present_rounded,
-                                                                        color: Colors
-                                                                            .purple[700],
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                  const SizedBox(
-                                                                    width: 5,
-                                                                  ),
-                                                                  Expanded(
-                                                                    flex: 7,
-                                                                    child: Text(
-                                                                      file.name,
-                                                                      style:
-                                                                          textStyle,
-                                                                    ),
-                                                                  ),
-                                                                ],
+                                                              const SizedBox(
+                                                                width: 5,
                                                               ),
-                                                            ),
-                                                            const SizedBox(
-                                                              height: 5,
-                                                            ),
-                                                          ],
+                                                              Expanded(
+                                                                flex: 7,
+                                                                child: Text(
+                                                                  file.name,
+                                                                  style:
+                                                                      textStyle,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
                                                         ),
                                                       );
                                                     }).toList(),
@@ -949,22 +1876,32 @@ class _ActivityCartState extends State<ActivityCart> {
                                             width: double.infinity,
                                             child: Text(
                                               "Tasks",
-                                              style: subHeaderStyle,
+                                              style: textStyleBold,
                                             ),
                                           ),
                                           // Tasks - Content
                                           Container(
                                             width: double.infinity,
-                                            margin: const EdgeInsets.only(
-                                              left: 20,
-                                              right: 20,
+                                            padding: const EdgeInsets.only(
+                                              left: 10,
+                                              right: 10,
+                                              top: 5,
+                                              bottom: 5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
+                                              color: Colors.grey[200],
                                             ),
                                             //Listbuilder bellow
                                             child: widget.temporaryAct[index]
                                                         .tasks?.isEmpty ??
                                                     true
-                                                ? const Text(
-                                                    "There are no tasks added")
+                                                ? Text(
+                                                    "There are no tasks added",
+                                                    style: textStyle,
+                                                    textAlign: TextAlign.center,
+                                                  )
                                                 : Column(
                                                     crossAxisAlignment:
                                                         CrossAxisAlignment
@@ -976,8 +1913,9 @@ class _ActivityCartState extends State<ActivityCart> {
                                                             [])
                                                         .map((task) {
                                                       return Text(
-                                                          "- ${task.task}",
-                                                          style: textStyle);
+                                                        "- ${task.task}",
+                                                        style: textStyle,
+                                                      );
                                                     }).toList(),
                                                   ),
                                           ),
@@ -989,23 +1927,36 @@ class _ActivityCartState extends State<ActivityCart> {
                                             width: double.infinity,
                                             child: Text(
                                               "Locations",
-                                              style: headerStyle,
+                                              style: textStyleBold,
                                             ),
                                           ),
                                           // Locations - Content
-                                          Container(
+                                          SizedBox(
                                             width: double.infinity,
-                                            margin: const EdgeInsets.only(
-                                              left: 20,
-                                              right: 20,
-                                            ),
-                                            alignment: Alignment.topLeft,
                                             //Listbuilder bellow
                                             child: widget.temporaryAct[index]
                                                         .locations?.isEmpty ??
                                                     true
-                                                ? const Text(
-                                                    "There are no locations added")
+                                                ? Container(
+                                                    width: double.infinity,
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                      top: 5,
+                                                      bottom: 5,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              15),
+                                                      color: Colors.grey[200],
+                                                    ),
+                                                    child: Text(
+                                                      "There are no locations added",
+                                                      style: textStyle,
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                    ),
+                                                  )
                                                 : Column(
                                                     children: (widget
                                                                 .temporaryAct[
@@ -1021,67 +1972,54 @@ class _ActivityCartState extends State<ActivityCart> {
                                                             location.longitude,
                                                           );
                                                         },
-                                                        child: Column(
-                                                          children: [
-                                                            Container(
-                                                              width: double
-                                                                  .infinity,
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(5),
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            10),
-                                                                color: Colors
-                                                                    .grey[200],
+                                                        child: Container(
+                                                          width:
+                                                              double.infinity,
+                                                          margin:
+                                                              const EdgeInsets
+                                                                  .only(
+                                                                  bottom: 5),
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .only(
+                                                            top: 5,
+                                                            bottom: 5,
+                                                            right: 10,
+                                                            left: 10,
+                                                          ),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        15),
+                                                            color: Colors
+                                                                .grey[200],
+                                                          ),
+                                                          child: Row(
+                                                            children: [
+                                                              const Expanded(
+                                                                flex: 1,
+                                                                child: Icon(
+                                                                    Icons
+                                                                        .location_on,
+                                                                    color: Colors
+                                                                        .black),
                                                               ),
-                                                              child: Row(
-                                                                children: [
-                                                                  Expanded(
-                                                                    flex: 2,
-                                                                    child:
-                                                                        Container(
-                                                                      padding: const EdgeInsets
-                                                                          .all(
-                                                                          10),
-                                                                      decoration:
-                                                                          BoxDecoration(
-                                                                        borderRadius:
-                                                                            BorderRadius.circular(10),
-                                                                        color: Colors
-                                                                            .blue[100],
-                                                                      ),
-                                                                      child:
-                                                                          Icon(
-                                                                        Icons
-                                                                            .location_on_outlined,
-                                                                        color: Colors
-                                                                            .blue[700],
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                  const SizedBox(
-                                                                    width: 5,
-                                                                  ),
-                                                                  Expanded(
-                                                                    flex: 7,
-                                                                    child: Text(
-                                                                      location
-                                                                          .address,
-                                                                      style:
-                                                                          textStyle,
-                                                                    ),
-                                                                  ),
-                                                                ],
+                                                              const SizedBox(
+                                                                width: 5,
                                                               ),
-                                                            ),
-                                                            const SizedBox(
-                                                              height: 5,
-                                                            ),
-                                                          ],
+                                                              Expanded(
+                                                                flex: 8,
+                                                                child: Text(
+                                                                  location
+                                                                      .address,
+                                                                  style:
+                                                                      textStyle,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
                                                         ),
                                                       );
                                                     }).toList(),
@@ -1095,23 +2033,32 @@ class _ActivityCartState extends State<ActivityCart> {
                                             width: double.infinity,
                                             child: Text(
                                               "Notifications",
-                                              style: subHeaderStyle,
+                                              style: textStyleBold,
                                             ),
                                           ),
                                           // Notifications - Content
                                           Container(
                                             width: double.infinity,
-                                            margin: const EdgeInsets.only(
-                                              left: 20,
-                                              right: 20,
+                                            padding: const EdgeInsets.only(
+                                              left: 10,
+                                              right: 10,
+                                              top: 5,
+                                              bottom: 5,
                                             ),
-                                            alignment: Alignment.topLeft,
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
+                                              color: Colors.grey[200],
+                                            ),
                                             //Listbuilder bellow
                                             child: widget.temporaryAct[index]
                                                         .notif?.isEmpty ??
                                                     true
-                                                ? const Text(
-                                                    "There are no reminder added")
+                                                ? Text(
+                                                    "There are no reminder added",
+                                                    style: textStyle,
+                                                    textAlign: TextAlign.center,
+                                                  )
                                                 : Column(
                                                     children: (widget
                                                                 .temporaryAct[
@@ -1120,17 +2067,16 @@ class _ActivityCartState extends State<ActivityCart> {
                                                             [])
                                                         .map((notif) {
                                                       return Text(
-                                                        "- Set reminder ${notif.minute} minutes before",
+                                                        "- Set a reminder ${notif.minute} minutes before",
                                                         style: textStyle,
+                                                        textAlign:
+                                                            TextAlign.left,
                                                       );
                                                     }).toList(),
                                                   ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                    const SizedBox(
-                                      width: 5,
                                     ),
                                   ],
                                 ),
@@ -1156,15 +2102,15 @@ class _ActivityCartState extends State<ActivityCart> {
                   children: [
                     Checkbox(
                       value: _isCheckedAlgorithm,
-                      onChanged: (bool? value) {
+                      onChanged: (value) {
                         setState(() {
-                          _isCheckedAlgorithm = value ?? false;
+                          _isCheckedAlgorithm = value!;
                         });
                       },
                     ),
-                    Expanded(
-                      child: Text('Set activity schedules using algorithms',
-                          style: textStyle),
+                    Text(
+                      'Set activity schedules using algorithms',
+                      style: textStyle,
                     ),
                   ],
                 ),
@@ -1172,12 +2118,39 @@ class _ActivityCartState extends State<ActivityCart> {
               const SizedBox(
                 height: 10,
               ),
-              // Button Schedule
-              MyButtonCalmBlue(
-                label: "Schedule",
-                onTap: () {
-                  setTemporaryActivitiesToFirestore();
+              // Button AlgorithmSchedule
+              GestureDetector(
+                onTap: () async {
+                  if (_isCheckedAlgorithm == true) {
+                    await beneranTestAlgoritma();
+                    tabAlgorithm();
+                  } else {
+                    setToFirestoreWithoutAlogirhtm(context);
+                  }
                 },
+                child: Container(
+                  alignment: Alignment.center,
+                  width: double.infinity,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    color: const Color.fromARGB(255, 3, 0, 66),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.playlist_add_rounded,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        "Make a Schedule",
+                        style: textStyleBoldWhite,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),

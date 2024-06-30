@@ -103,6 +103,238 @@
   //   }
   // }
 
+  // if (activList.isEmpty) {
+    //   return Container(
+    //     margin: const EdgeInsets.only(
+    //       bottom: 10,
+    //     ),
+    //     width: double.infinity,
+    //     height: double.infinity,
+    //     alignment: Alignment.center,
+    //     decoration: BoxDecoration(
+    //       borderRadius: BorderRadius.circular(20),
+    //       color: const Color.fromARGB(255, 255, 170, 0),
+    //     ),
+    //     child: Text(
+    //       "You're free on this day, Enjoy :)",
+    //       // style: caption1Style,
+    //     ),
+    //   );
+    // } else {
+    //   return ListView.builder(
+    //     itemCount: activList.length,
+    //     itemBuilder: (BuildContext context, int index) {
+    //       return GestureDetector(
+    //         onTap: () {
+    //           Navigator.push(
+    //             context,
+    //             MaterialPageRoute(
+    //               builder: (context) => DetailActivity(
+    //                 scheduledID: activList[index].id_scheduled,
+    //               ),
+    //             ),
+    //           );
+    //           // print(activList[index].id_scheduled);
+    //         },
+    //         child: Column(
+    //           children: [
+    //             // Left (number) n Right (container)
+    //             Row(
+    //               children: [
+    //                 // Left
+    //                 Expanded(
+    //                   flex: 1,
+    //                   child: Container(
+    //                     alignment: Alignment.center,
+    //                     child: Text(
+    //                       "${index + 1}",
+    //                       // style: calloutStyle,
+    //                     ),
+    //                   ),
+    //                 ),
+    //                 // Right
+    //                 Expanded(
+    //                   flex: 9,
+    //                   child: Container(
+    //                     width: double.infinity,
+    //                     padding: const EdgeInsets.all(10),
+    //                     decoration: BoxDecoration(
+    //                       borderRadius: BorderRadius.circular(20),
+    //                       color: Color.fromARGB(
+    //                         activList[index].color_a == 0
+    //                             ? 255
+    //                             : activList[index].color_a,
+    //                         activList[index].color_r == 0
+    //                             ? 255
+    //                             : activList[index].color_r,
+    //                         activList[index].color_g == 0
+    //                             ? 170
+    //                             : activList[index].color_g,
+    //                         activList[index].color_b == 0
+    //                             ? 0
+    //                             : activList[index].color_b,
+    //                       ),
+    //                     ),
+    //                     child: Column(
+    //                       children: [
+    //                         Row(
+    //                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    //                           children: [
+    //                             Align(
+    //                               alignment: Alignment.topLeft,
+    //                               child: Container(
+    //                                 decoration: BoxDecoration(
+    //                                     borderRadius: BorderRadius.circular(20),
+    //                                     color: const Color.fromARGB(
+    //                                         255, 3, 0, 66)),
+    //                                 padding: const EdgeInsets.all(5),
+    //                                 child: Text(
+    //                                   getPriority(
+    //                                     activList[index].important_type,
+    //                                     activList[index].urgent_type,
+    //                                   ),
+    //                                   // style: caption2StyleWhite,
+    //                                 ),
+    //                               ),
+    //                             ),
+    //                             Align(
+    //                               alignment: Alignment.topRight,
+    //                               child: PopupMenuButton(
+    //                                   itemBuilder: (BuildContext context) => [
+    //                                         const PopupMenuItem(
+    //                                           value: 'delete',
+    //                                           child: Row(
+    //                                             children: [
+    //                                               Icon(Icons.delete,
+    //                                                   color: Colors.black),
+    //                                               SizedBox(width: 8),
+    //                                               Text('Delete'),
+    //                                             ],
+    //                                           ),
+    //                                         ),
+    //                                       ],
+    //                                   onSelected: (value) {
+    //                                     showDialog(
+    //                                       context: context,
+    //                                       builder: (BuildContext context) {
+    //                                         return AlertDialog(
+    //                                           title:
+    //                                               const Text("Confirm Delete"),
+    //                                           content: const Text(
+    //                                               'Are you sure you want to delete this activity?'),
+    //                                           actions: [
+    //                                             TextButton(
+    //                                               onPressed: () {
+    //                                                 Navigator.of(context).pop();
+    //                                               },
+    //                                               child: const Text('Cancel'),
+    //                                             ),
+    //                                             TextButton(
+    //                                               onPressed: () {
+    //                                                 deleteSchedule(
+    //                                                     activList[index]
+    //                                                         .id_scheduled,
+    //                                                     activList[index]
+    //                                                         .id_activity);
+    //                                                 ScaffoldMessenger.of(
+    //                                                         context)
+    //                                                     .showSnackBar(
+    //                                                         const SnackBar(
+    //                                                   content:
+    //                                                       Text('Item deleted'),
+    //                                                 ));
+    //                                                 Navigator.of(context).pop();
+    //                                               },
+    //                                               child: const Text('Yes'),
+    //                                             ),
+    //                                           ],
+    //                                         );
+    //                                       },
+    //                                     );
+    //                                   }),
+    //                             ),
+    //                           ],
+    //                         ),
+    //                         Row(
+    //                           children: [
+    //                             Expanded(
+    //                               flex: 7,
+    //                               child: Column(
+    //                                 crossAxisAlignment:
+    //                                     CrossAxisAlignment.start,
+    //                                 children: [
+    //                                   Text(
+    //                                     activList[index].title,
+    //                                     // style: bodyStyle,
+    //                                   ),
+    //                                   Text(
+    //                                     "Do your activity at: ",
+    //                                     // style: footnoteStyleGrey,
+    //                                   ),
+    //                                   Container(
+    //                                     alignment: Alignment.topLeft,
+    //                                     child: ListView.builder(
+    //                                       shrinkWrap: true,
+    //                                       itemCount: activList[index]
+    //                                               .locations
+    //                                               ?.length ??
+    //                                           0,
+    //                                       itemBuilder:
+    //                                           (BuildContext ctxt, int indx) {
+    //                                         if (activList[index]
+    //                                                 .locations
+    //                                                 ?.isNotEmpty ==
+    //                                             true) {
+    //                                           return Text(
+    //                                             "- ${activList[index].locations?[indx].address}",
+    //                                             // style: caption1Style,
+    //                                           );
+    //                                         } else {
+    //                                           return Text(
+    //                                             "Wherever you want :)",
+    //                                             // style: caption1Style,
+    //                                           );
+    //                                         }
+    //                                       },
+    //                                     ),
+    //                                   ),
+    //                                   const SizedBox(
+    //                                     height: 20,
+    //                                   ),
+    //                                   Text(
+    //                                     "${formattedActivityTimeOnly(activList[index].start_time)} - ${formattedActivityTimeOnly(activList[index].end_time)}",
+    //                                     // style: caption1Style,
+    //                                   ),
+    //                                 ],
+    //                               ),
+    //                             ),
+    //                             Expanded(
+    //                               flex: 3,
+    //                               child: Container(
+    //                                 margin: const EdgeInsets.all(10),
+    //                                 child: Image.asset(getPriorityImage(
+    //                                     activList[index].important_type,
+    //                                     activList[index].urgent_type)),
+    //                               ),
+    //                             ),
+    //                           ],
+    //                         ),
+    //                       ],
+    //                     ),
+    //                   ),
+    //                 ),
+    //               ],
+    //             ),
+    //             const SizedBox(
+    //               height: 5,
+    //             ),
+    //           ],
+    //         ),
+    //       );
+    //     },
+    //   );
+    // }
+
 /* ------------------------------------------------------------ */
 
 // add_activity.dart
@@ -174,6 +406,10 @@
 
 
 //detail_activity.dart
+String? activityID;
+List<Map<String, dynamic>> todayActivities = [];
+  List<Tasks> tasks = [];
+
   // Future<String> fetchData() async {
   //   final response = await http.post(
   //       Uri.parse("http://192.168.1.12:8012/picklePHP/detailActivity.php"),
@@ -373,4 +609,813 @@
   //           [],
   //     );
   //   }
+  // }
+
+
+  // Timer.dart
+  int minuteWork = 25;
+  int minuteBreak = 5;
+  int second = 0;
+  int minute = 0;
+  int secondsWorkTotals = 0;
+  // int secondsBreakTotals = 0;
+  late Timer _timer;
+  bool running = false;
+  late DateTime _startTime;
+  bool breakSession = false;
+  bool _isStart = false;
+
+  void startTimer() {
+    setState(() {
+      minute = breakSession == false ? minuteWork : minuteBreak;
+      _startTime = DateTime.now();
+      _isStart = true;
+      running = true;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        if (breakSession == false) {
+          if (second < 1) {
+            if (minute < 1) {
+              timer.cancel();
+              secondsWorkTotals +=
+                  DateTime.now().difference(_startTime).inSeconds;
+              breakSession = true;
+              second = 0;
+              minute = 0;
+              running = false;
+              _isStart = false;
+              print("Work total in seconds: $secondsWorkTotals");
+            } else {
+              minute--;
+              second = 59;
+            }
+          } else {
+            second--;
+            if (second == 59) {
+              minute--;
+            }
+          }
+        } else {
+          if (second < 1) {
+            if (minute < 1) {
+              timer.cancel();
+              breakSession = false;
+              second = 0;
+              minute = 0;
+              running = false;
+              _isStart = false;
+            } else {
+              minute--;
+              second = 59;
+            }
+          } else {
+            second--;
+            if (second == 59) {
+              minute--;
+            }
+          }
+        }
+      });
+    });
+  }
+
+  void resumeTimer() {
+    setState(() {
+      running = true;
+      _startTime = DateTime.now();
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        if (breakSession == false) {
+          if (second < 1) {
+            if (minute < 1) {
+              timer.cancel();
+              secondsWorkTotals +=
+                  DateTime.now().difference(_startTime).inSeconds;
+              breakSession = true;
+              second = 0;
+              running = false;
+              _isStart = false;
+              print("Work total in seconds: $secondsWorkTotals");
+            } else {
+              minute--;
+              second = 59;
+            }
+          } else {
+            second--;
+            if (second == 59) {
+              minute--;
+            }
+          }
+        } else {
+          if (second < 1) {
+            if (minute < 1) {
+              timer.cancel();
+              breakSession = false;
+              second = 0;
+              running = false;
+              _isStart = false;
+            } else {
+              minute--;
+              second = 59;
+            }
+          } else {
+            second--;
+            if (second == 59) {
+              minute--;
+            }
+          }
+        }
+      });
+    });
+  }
+
+  void pauseTimer() {
+    _timer.cancel();
+    setState(() {
+      running = false;
+      if (breakSession == false) {
+        secondsWorkTotals += DateTime.now().difference(_startTime).inSeconds;
+        print("Work total in seconds: $secondsWorkTotals");
+      }
+    });
+  }
+
+  void resetTimer() {
+    _timer.cancel();
+    setState(() {
+      running = false;
+      breakSession = false;
+      // minuteBreak = 1;
+      // minuteWork = 2;
+      minute = 0; // ini nanti nilainya sama dengan minutework
+      second = 0;
+      _isStart = false;
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getListOfTodayActivities() async {
+    final today = DateTime.now();
+    final start = DateTime(today.year, today.month, today.day);
+    final end = DateTime(today.year, today.month, today.day, 23, 59, 59);
+    Set<String> uniqueID = <String>{};
+    todayActivities = [];
+
+    final schQuery = await FirebaseFirestore.instance
+        .collection('scheduled_activities')
+        .where('actual_start_time', isGreaterThanOrEqualTo: start)
+        .where('actual_start_time', isLessThan: end)
+        .get();
+    if (schQuery.docs.isNotEmpty) {
+      for (var doc in schQuery.docs) {
+        var actID = doc['activities_id'];
+        if (!uniqueID.contains(actID)) {
+          final actDoc = await FirebaseFirestore.instance
+              .collection('activities')
+              .doc(actID)
+              .get();
+          if (actDoc.exists) {
+            var actData = actDoc.data()!;
+            actData['id'] = actID;
+
+            uniqueID.add(actID);
+            todayActivities.add(actData);
+          }
+        }
+      }
+    }
+
+    return todayActivities;
+  }
+
+  Future<List<Tasks>> getTaskListOfTodayActivities(String id) async {
+    tasks = [];
+
+    final taskQuery = await FirebaseFirestore.instance
+        .collection('tasks')
+        .where('activities_id', isEqualTo: id)
+        .get();
+    if (taskQuery.docs.isNotEmpty) {
+      for (var doc in taskQuery.docs) {
+        tasks.add(Tasks(
+          id: doc.id,
+          task: doc['title'],
+          status: doc['status'],
+        ));
+      }
+    }
+
+    return tasks;
+  }
+
+  Future<void> updateStatusTask(String? id, bool? status) async {
+    await FirebaseFirestore.instance
+        .collection('tasks')
+        .doc(id)
+        .update({'status': status});
+  }
+
+  Widget formattedActivityOption(BuildContext context) {
+    return Consumer<ActivityTaskToday>(
+      builder: (context, actState, child) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            width: double.infinity,
+            child: Align(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        // else if (snapshot.hasError) {
+        //   return SizedBox(
+        //     width: double.infinity,
+        //     child: Align(
+        //       child: Text('Error: ${snapshot.error}'),
+        //     ),
+        //   );
+        // } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        //   return const SizedBox(
+        //     width: double.infinity,
+        //     child: Align(
+        //       child: Text("There aren't any activities for today"),
+        //     ),
+        //   );
+        // } 
+        else {
+          return SizedBox(
+            width: double.infinity,
+            child: DropdownButton<String>(
+              items: snapshot.data!.map((act) {
+                return DropdownMenuItem<String>(
+                  value: act['id'],
+                  child: Text(act['title']),
+                );
+              }).toList(),
+              onChanged: (v) {
+                setState(() {
+                  activityID = v;
+                });
+              },
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Widget formattedListofTask(BuildContext context) {
+    final actState = Provider.of<ActivityTaskToday>(context);
+    final taskss = actState.tasks;
+
+    if (actState.activityID != null) {
+      return FutureBuilder<List<Tasks>>(
+        future: getTaskListOfTodayActivities(activityID!),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const SizedBox(
+              width: double.infinity,
+              child: Align(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          } else if (snapshot.hasError) {
+            return SizedBox(
+              width: double.infinity,
+              child: Align(
+                child: Text('Error: ${snapshot.error}'),
+              ),
+            );
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const SizedBox(
+              width: double.infinity,
+              child: Align(
+                child: Text("There aren't any activities for today"),
+              ),
+            );
+          } else {
+            return ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: snapshot.data!.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  width: 200,
+                  alignment: Alignment.centerLeft,
+                  margin: const EdgeInsets.only(right: 5),
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(
+                      color: Colors.purple,
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: snapshot.data![index].status,
+                        onChanged: (value) {
+                          setState(() {
+                            snapshot.data![index].status = value!;
+                          });
+                          updateStatusTask(snapshot.data![index].id, value);
+                        },
+                      ),
+                      const SizedBox(
+                        width: 5,
+                      ),
+                      Expanded(
+                        child: Text(
+                          snapshot.data![index].task,
+                          style: GoogleFonts.poppins(
+                            textStyle: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black,
+                              decoration: _isChecked == true
+                                  ? TextDecoration.lineThrough
+                                  : TextDecoration.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          }
+        },
+      );
+    } else {
+      return const SizedBox(
+        width: double.infinity,
+        child: Align(
+          child: Text(
+              "You haven't selected an activity or there are no activities today"),
+        ),
+      );
+    }
+  }
+
+
+
+Home.dart
+// GestureDetector(
+          //   onTap: () {
+          //     Navigator.push(
+          //       context,
+          //       MaterialPageRoute(
+          //         builder: (context) => const TesAlgoritma(),
+          //       ),
+          //     );
+          //   },
+          //   child: aLS2 == null
+          //       ? Container(
+          //           width: double.infinity,
+          //           padding: const EdgeInsets.all(10),
+          //           alignment: Alignment.center,
+          //           decoration: BoxDecoration(
+          //             borderRadius: BorderRadius.circular(20),
+          //             color: const Color.fromARGB(255, 255, 170, 0),
+          //           ),
+          //           child: Text(
+          //             "You're free for now :)",
+          //             style: headerStyle,
+          //           ),
+          //         )
+          //       : Container(
+          //           width: double.infinity,
+          //           padding: const EdgeInsets.all(10),
+          //           decoration: BoxDecoration(
+          //             borderRadius: BorderRadius.circular(20),
+          //             color: Color.fromARGB(
+          //               aLS2?.color_a ?? 255,
+          //               aLS2?.color_r ?? 166,
+          //               aLS2?.color_g ?? 255,
+          //               aLS2?.color_b ?? 204,
+          //             ),
+          //           ),
+          //           child: Row(
+          //             children: [
+          //               Expanded(
+          //                 flex: 7,
+          //                 child: Column(
+          //                   crossAxisAlignment: CrossAxisAlignment.start,
+          //                   children: [
+          //                     Container(
+          //                       decoration: BoxDecoration(
+          //                         borderRadius: BorderRadius.circular(20),
+          //                         color: const Color.fromARGB(255, 3, 0, 66),
+          //                       ),
+          //                       padding: const EdgeInsets.all(5),
+          //                       child: Text(
+          //                         getPriority(
+          //                           aLS2!.important_type,
+          //                           aLS2!.urgent_type,
+          //                         ),
+          //                         style: textStyle,
+          //                       ),
+          //                     ),
+          //                     Text(
+          //                       aLS2!.title,
+          //                       style: screenTitleStyle,
+          //                     ),
+          //                     Text(
+          //                       "Do your activity at Place",
+          //                       style: textStyleGrey,
+          //                     ),
+          //                     // Container(
+          //                     //   alignment: Alignment.topLeft,
+          //                     //   child: formattedCurrentLocations(),
+          //                     // ),
+          //                     const SizedBox(
+          //                       height: 20,
+          //                     ),
+          //                     Text(
+          //                       "${formattedActivityTimeOnly(aLS2!.start_time)} - ${formattedActivityTimeOnly(aLS2!.end_time)}",
+          //                       style: subHeaderStyle,
+          //                     ),
+          //                   ],
+          //                 ),
+          //               ),
+          //               Expanded(
+          //                 flex: 3,
+          //                 child: Container(
+          //                   margin: const EdgeInsets.all(10),
+          //                   child: Image.asset(getPriorityImage(
+          //                       aLS2!.important_type, aLS2!.urgent_type)),
+          //                 ),
+          //               ),
+          //             ],
+          //           ),
+          //         ),
+          // ),
+
+          //   final response = await http.post(
+  //     Uri.parse("http://192.168.1.13:8012/picklePHP/signIn.php"),
+  //     body: {
+  //       "email": _email.text,
+  //       "pwd": encryptPwd(_password.text),
+  //     },
+  //   );
+  //   if (response.statusCode == 200) {
+  //     Map json = jsonDecode(response.body);
+  //     message = json["message"];
+  //     if (json["result"] == "success") {
+  //       final prefs = await SharedPreferences.getInstance();
+  //       prefs.setString("user_id", _email.text);
+  //       // ignore: use_build_context_synchronously
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text(message),
+  //         ),
+  //       );
+  //       main();
+  //     } else {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text(message),
+  //         ),
+  //       );
+  //     }
+  //   } else {
+  //     throw Exception('Failed to read API');
+  //   }
+  // }
+
+
+  // Profile.dart
+  // // Widget Activities
+  // Widget formattedListOfActivities() {
+  //   if (Ps?.activity?.isEmpty ?? true) {
+  //     // List is empty
+  //     return Container(
+  //       width: double.infinity,
+  //       margin: const EdgeInsets.only(top: 5),
+  //       decoration: BoxDecoration(
+  //         borderRadius: BorderRadius.circular(30),
+  //         border: Border.all(
+  //           color: const Color.fromARGB(255, 3, 0, 6),
+  //         ),
+  //       ),
+  //       padding: const EdgeInsets.all(10),
+  //       child: Row(
+  //         mainAxisAlignment: MainAxisAlignment.center,
+  //         children: [
+  //           const Expanded(
+  //             flex: 2,
+  //             child: Icon(
+  //               Icons.info_outline_rounded,
+  //               color: Color.fromARGB(255, 3, 0, 6),
+  //             ),
+  //           ),
+  //           Expanded(
+  //             flex: 7,
+  //             child: Column(
+  //               mainAxisAlignment: MainAxisAlignment.center,
+  //               crossAxisAlignment: CrossAxisAlignment.start,
+  //               children: [
+  //                 Text(
+  //                   "No activity today",
+  //                   style: subHeaderStyle,
+  //                 ),
+  //                 Text(
+  //                   "Don't forget to start you bright day with plans, so let's plan your day :)",
+  //                   style: textStyle,
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //   } else {
+  //     return Container(
+  //       width: double.infinity,
+  //       margin: const EdgeInsets.only(top: 5, bottom: 10),
+  //       height: MediaQuery.of(context).size.height * 0.15,
+  //       child: SingleChildScrollView(
+  //         scrollDirection: Axis.horizontal,
+  //         child: Row(
+  //           mainAxisAlignment: MainAxisAlignment.start,
+  //           crossAxisAlignment: CrossAxisAlignment.center,
+  //           children: userApp.act.map(
+  //                 (activity) {
+  //                   return Container(
+  //                     margin: EdgeInsets.only(
+  //                       right: 5,
+  //                     ),
+  //                     padding: const EdgeInsets.only(
+  //                       top: 5,
+  //                       left: 5,
+  //                     ),
+  //                     width: 150,
+  //                     height: 100,
+  //                     decoration: BoxDecoration(
+  //                       borderRadius: BorderRadius.circular(10),
+  //                       border: Border.all(
+  //                         color: formattedPriorityColor(
+  //                           activity['important_type'],
+  //                           activity['urgent_type'],
+  //                         ),
+  //                         width: 3,
+  //                       ),
+  //                       color: Color.fromARGB(
+  //                         activity['color_a'],
+  //                         activity['color_r'],
+  //                         activity['color_g'],
+  //                         activity['color_b'],
+  //                       ),
+  //                     ),
+  //                     child: Column(
+  //                       crossAxisAlignment: CrossAxisAlignment.start,
+  //                       children: [
+  //                         const SizedBox(
+  //                           height: 5,
+  //                         ),
+  //                         Text(
+  //                           activity['activity_name'],
+  //                           style: textStyle,
+  //                         ),
+  //                         const SizedBox(
+  //                           height: 20,
+  //                         ),
+  //                         Text(
+  //                           "${formattedActivityTimeOnly(activity['start_time'])} - ${formattedActivityTimeOnly(activity['end_time'])}",
+  //                           style: textStyle,
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   );
+  //                 },
+  //               ).toList() ??
+  //               [],
+  //         ),
+  //       ),
+  //     );
+  //   }
+  // }
+
+
+  // Activity_edit.dart
+  // Read Current Category
+  // Future<void> getCurrentCategoryData() async {
+  //   String s = widget.activity.cat ?? "";
+
+  //   DocumentSnapshot data =
+  //       await FirebaseFirestore.instance.collection('categories').doc(s).get();
+
+  //   List<DropdownMenuItem<String>> items = [];
+
+  //   data.docs.forEach((element) {
+  //     String catTitle = element['title'];
+
+  //     items.add(DropdownMenuItem(
+  //       value: element.id,
+  //       child: Text(catTitle),
+  //     ));
+  //   });
+
+  //   setState(() {
+  //     dropdownCat = items;
+  //   });
+  // }
+
+  Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: Text(
+                                    "Timezone",
+                                    // style: subHeaderStyleGrey,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 5,
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Tooltip(
+                                    key: _tooltipTimezone,
+                                    margin: const EdgeInsets.only(
+                                      left: 80,
+                                      right: 20,
+                                    ),
+                                    message:
+                                        "Please enter your activity timezone",
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        final dynamic tooltip =
+                                            _tooltipTimezone.currentState;
+                                        tooltip.ensureTooltipVisible();
+                                      },
+                                      child: const Icon(
+                                        Icons.info,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.only(
+                                left: 10,
+                                right: 10,
+                              ),
+                              alignment: Alignment.centerLeft,
+                              height: 50,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.grey,
+                                  width: 1.0,
+                                ),
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: DropdownButton(
+                                isExpanded: true,
+                                value: timezoneName,
+                                hint: Text(
+                                  "Choose timezone for your activity",
+                                  // style: textStyleGrey,
+                                ),
+                                items: timezone.map((time) {
+                                  return DropdownMenuItem(
+                                    value: time.name,
+                                    child: Text(
+                                      time.name,
+                                      // style: textStyle,
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (v) {
+                                  setState(() {
+                                    timezoneName = v;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+
+
+TIMEZONE.dart
+import 'package:flutter/material.dart';
+import 'package:pickleapp/theme.dart';
+
+class MyTimeZones extends StatelessWidget {
+  const MyTimeZones({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Time Zone",
+          // style: title1Style,
+        ),
+      ),
+      body: Container(
+        margin: const EdgeInsets.all(20),
+        color: Colors.amber,
+        child: Column(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.only(
+                    left: 10,
+                    right: 10,
+                  ),
+                  alignment: Alignment.centerLeft,
+                  height: 40,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.black,
+                      width: 1.0,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          // readOnly: widget == null ? false : true,
+                          keyboardType: TextInputType.emailAddress,
+                          // textCapitalization: TextCapitalization.sentences,
+                          autofocus: false,
+                          // controller: _email,
+                          // style: caption1Style,
+                          decoration: InputDecoration(
+                            hintText: "Enter your email here",
+                            // hintStyle: caption1Style,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(
+              height: 10,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+activity_edit.dart
+ // void addNotification(String input) {
+  //   List<String> notificationTimes = input.split('.');
+  //   List<Notifications> newNotifications = [];
+
+  //   for (String notificationTime in notificationTimes) {
+  //     newNotifications.add(Notifications(
+  //       minute: int.parse(notificationTime),
+  //     ));
+  //   }
+
+  //   setState(() {
+  //     notificationList = newNotifications;
+  //     print('Notification in a minutes before: $notificationList');
+  //   });
+  // }
+
+  // Read Category Data
+  // Future<void> getCategoryData() async {
+  //   QuerySnapshot data = await FirebaseFirestore.instance
+  //       .collection('categories')
+  //       .where('userId', isEqualTo: widget.userID)
+  //       .get();
+
+  //   List<DropdownMenuItem<String>> items = [];
+
+  //   for (var element in data.docs) {
+  //     String catTitle = element['title'];
+
+  //     items.add(DropdownMenuItem(
+  //       value: element.id,
+  //       child: Text(
+  //         catTitle,
+  //       ),
+  //     ));
+  //   }
+
+  //   setState(() {
+  //     dropdownCat = items;
+  //   });
   // }

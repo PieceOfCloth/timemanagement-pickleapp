@@ -1,58 +1,53 @@
-// ignore_for_file: non_constant_identifier_names
-
 import 'package:pickleapp/screen/class/location.dart';
 
 class ActivityList {
-  String id_activity;
-  String id_scheduled;
+  String idActivity;
+  String idScheduled;
   String title;
-  String start_time;
-  String end_time;
-  String important_type;
-  String urgent_type;
-  int color_a;
-  int color_r;
-  int color_g;
-  int color_b;
-  String timezone;
+  String startTime;
+  String endTime;
+  String importantType;
+  String urgentType;
+  int? colorA;
+  int? colorR;
+  int? colorG;
+  int? colorB;
   List<Locations>? locations;
 
   ActivityList({
-    required this.id_activity,
-    required this.id_scheduled,
+    required this.idActivity,
+    required this.idScheduled,
     required this.title,
-    required this.start_time,
-    required this.end_time,
-    required this.important_type,
-    required this.urgent_type,
-    required this.color_a,
-    required this.color_r,
-    required this.color_g,
-    required this.color_b,
-    required this.timezone,
+    required this.startTime,
+    required this.endTime,
+    required this.importantType,
+    required this.urgentType,
+    required this.colorA,
+    required this.colorR,
+    required this.colorG,
+    required this.colorB,
     this.locations,
   });
 
   factory ActivityList.fromJson(Map<String, dynamic> json) {
     return ActivityList(
-      id_activity: json['id_activity'] as String,
-      id_scheduled: json['id_scheduled'] as String,
+      idActivity: json['idActivity'] as String,
+      idScheduled: json['idScheduled'] as String,
       title: json['title'] as String,
-      start_time: json['start_time'] as String,
-      end_time: json['end_time'] as String,
-      important_type: json['important_type'] as String,
-      urgent_type: json['urgent_type'] as String,
-      color_a: json['color_a'] as int,
-      color_r: json['color_r'] as int,
-      color_g: json['color_g'] as int,
-      color_b: json['color_b'] as int,
-      timezone: json['timezone'] as String,
+      startTime: json['startTime'] as String,
+      endTime: json['endTime'] as String,
+      importantType: json['importantType'] as String,
+      urgentType: json['urgent_tTe'] as String,
+      colorA: json['colorA'] as int,
+      colorR: json['colorR'] as int,
+      colorG: json['colorG'] as int,
+      colorB: json['colorB'] as int,
       locations: json['locations'],
     );
   }
 
   @override
   String toString() {
-    return 'ActivityList: {id_activity: $id_activity, id_scheduled: $id_scheduled, title: $title, start_time: $start_time, end_time: $end_time, important_type: $important_type, urgent_type: $urgent_type, color_a: $color_a, color_r: $color_r, color_g: $color_g, color_b: $color_b, timezone: $timezone, locations: $locations}';
+    return 'ActivityList: {idActivity: $idActivity, idScheduled: $idScheduled, title: $title, startTime: $startTime, endTime: $endTime, importantType: $importantType, urgentType: $urgentType, colorA: $colorA, colorR: $colorR, colorG: $colorG, colorB: $colorB, locations: $locations}';
   }
 }

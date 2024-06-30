@@ -7,7 +7,7 @@ class MyInputFile extends StatelessWidget {
   final Function()? onTapFunct;
   final Widget? widget;
 
-  MyInputFile({
+  const MyInputFile({
     super.key,
     required this.title,
     required this.placeholder,
@@ -17,46 +17,44 @@ class MyInputFile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: subHeaderStyleGrey,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          // style: subHeaderStyleGrey,
+        ),
+        const SizedBox(
+          height: 5,
+        ),
+        Container(
+          padding: const EdgeInsets.only(
+            left: 10,
+            right: 10,
           ),
-          const SizedBox(
-            height: 5,
+          alignment: Alignment.center,
+          height: 50,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: Colors.grey,
+              width: 1.0,
+            ),
+            borderRadius: BorderRadius.circular(10),
+            color: Colors.grey[300],
           ),
-          Container(
-            padding: const EdgeInsets.only(
-              left: 10,
-              right: 10,
-            ),
-            alignment: Alignment.center,
-            height: 30,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: Colors.grey,
-                width: 1.0,
-              ),
-              borderRadius: BorderRadius.circular(10),
-              color: Colors.grey[300],
-            ),
-            child: GestureDetector(
-              onTap: onTapFunct,
-              child: Text(
-                "Click here to ${placeholder}",
-                style: textStyle,
-              ),
+          child: GestureDetector(
+            onTap: onTapFunct,
+            child: Text(
+              "Click here to $placeholder",
+              style: textStyle,
             ),
           ),
-          const SizedBox(
-            height: 10,
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(
+          height: 10,
+        ),
+      ],
     );
   }
 }
