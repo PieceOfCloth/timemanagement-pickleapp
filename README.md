@@ -5,17 +5,17 @@ Pickle App is a Flutter-based time management app that helps you to stay organiz
 ## Getting Started
 To get started with timemanagement-pickleapp, follow these steps (*Don't include the quotation marks*):
 
-1. *Clone the repository:* "git clone [https://github.com/yourusername/your-repo-name.git](https://github.com/PieceOfCloth/timemanagement-pickleapp.git)"
-2. *Navigate to the project directory:* "cd your-repo-name" (Navigate to your directory)
-3. *Install dependencies:* "flutter pub get"
-4. *Run the app:* "flutter run"
+1. **Clone the repository:** "git clone [https://github.com/yourusername/your-repo-name.git](https://github.com/PieceOfCloth/timemanagement-pickleapp.git)"
+2. **Navigate to the project directory:** "cd your-repo-name" (Navigate to your directory)
+3. **Install dependencies:** "flutter pub get"
+4. **Run the app:** "flutter run"
 
-For *Database setup instructions*, including Firebase configuration, continue to the next section.
+For **Database setup instructions**, including Firebase configuration, continue to the next section.
 
 ## Firebase Setup for Flutter
 This guide will help you set up Firebase for Pickle App. Follow these steps to configure Firebase in your project:
 
-*Step 1: Create a Firebase Project*
+**Step 1: Create a Firebase Project**
 1. Go to the Firebase Console.
 Click on Add project and enter a project name.
 (Optional) Configure Google Analytics for your project.
