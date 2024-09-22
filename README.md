@@ -5,7 +5,7 @@ Pickle App is a Flutter-based time management app that helps you to stay organiz
 ## Getting Started
 To get started with timemanagement-pickleapp, follow these steps (*Don't include the quotation marks*):
 
-1. **Clone the repository:** "git clone [https://github.com/yourusername/your-repo-name.git](https://github.com/PieceOfCloth/timemanagement-pickleapp.git)"
+1. **Clone the repository:** "git clone https://github.com/PieceOfCloth/timemanagement-pickleapp.git"
 2. **Navigate to the project directory:** "cd your-repo-name" (Navigate to your directory)
 3. **Install dependencies:** "flutter pub get"
 4. **Run the app:** "flutter run"
