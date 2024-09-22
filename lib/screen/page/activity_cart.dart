@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print, use_build_context_synchronously
+// ignore_for_file: avoid_print, use_build_context_synchronously, unrelated_type_equality_checks
 
 import 'dart:io';
 
@@ -9,15 +9,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:open_file/open_file.dart';
 import 'package:pickleapp/auth.dart';
-import 'package:pickleapp/screen/class/algorithm_schedule.dart';
 import 'package:pickleapp/screen/class/file.dart';
 import 'package:pickleapp/screen/class/location.dart';
 import 'package:pickleapp/screen/class/notification.dart';
 import 'package:pickleapp/screen/class/task.dart';
 import 'package:pickleapp/screen/components/alert_information.dart';
-import 'package:pickleapp/screen/services/activity_task_state.dart';
-import 'package:provider/provider.dart';
-// import 'package:pickleapp/screen/page/home.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:logger/logger.dart';
 import 'package:collection/collection.dart';
@@ -40,37 +36,39 @@ class _ActivityCartState extends State<ActivityCart> {
   bool _isCheckedAlgorithm = false;
   bool _isStartExist = false;
   var logger = Logger();
+  Map<String, String> firstKegiatanIdMap = {};
+  bool isCollision = false;
 
-  List<AlgorithmSchedule> scheduleList = [];
-  List<AlgorithmSchedule> scheduleList2 = [];
+  List<AddActivityList> scheduleList = [];
+  List<AddActivityList> scheduleList2 = [];
   List<AddActivityList> temporaryActiv = [];
   List<AddActivityList> processedListWithStart = [];
   List<AddActivityList> processedListWithoutStart = [];
+  List<AddActivityList> processedListFixed = [];
   List<AddActivityList> remainingList = [];
-  Map<String, List<AlgorithmSchedule>> groupedSchedule = {};
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
   // For determine priority high medium or so on
   String getPriority(important, urgent) {
-    if (important == "Important" && urgent == "Urgent") {
-      return "Golf (Critical Priority)";
-    } else if (important == "Important" && urgent == "Not Urgent") {
-      return "Pebble (High Priority)";
-    } else if (important == "Not Important" && urgent == "Urgent") {
-      return "Sand (Medium Priority)";
+    if (important == "Penting" && urgent == "Mendesak") {
+      return "Bola Golf (Prioritas Utama)";
+    } else if (important == "Penting" && urgent == "Tidak Mendesak") {
+      return "Kerikil (Prioritas Tinggi)";
+    } else if (important == "Tidak Penting" && urgent == "Mendesak") {
+      return "Pasir (Prioritas Sedang)";
     } else {
-      return "Water (Low Priority)";
+      return "Air (Prioritas Rendah)";
     }
   }
 
   // For determine priority high medium or so on
   int getPriorityRank(String important, String urgent) {
-    if (important == "Important" && urgent == "Urgent") {
+    if (important == "Penting" && urgent == "Mendesak") {
       return 4;
-    } else if (important == "Important" && urgent == "Not Urgent") {
+    } else if (important == "Penting" && urgent == "Tidak Mendesak") {
       return 3;
-    } else if (important == "Not Important" && urgent == "Urgent") {
+    } else if (important == "Tidak Penting" && urgent == "Mendesak") {
       return 2;
     } else {
       return 1;
@@ -79,11 +77,11 @@ class _ActivityCartState extends State<ActivityCart> {
 
   // Get priority color based on important und urgent level
   Color getPriorityColor(important, urgent) {
-    if (important == "Important" && urgent == "Urgent") {
+    if (important == "Penting" && urgent == "Mendesak") {
       return Colors.red[600] ?? Colors.red;
-    } else if (important == "Important" && urgent == "Not Urgent") {
+    } else if (important == "Penting" && urgent == "Tidak Mendesak") {
       return Colors.yellow[600] ?? Colors.yellow;
-    } else if (important == "Not Important" && urgent == "Urgent") {
+    } else if (important == "Tidak Penting" && urgent == "Mendesak") {
       return Colors.green[600] ?? Colors.green;
     } else {
       return Colors.blue[600] ?? Colors.blue;
@@ -107,7 +105,7 @@ class _ActivityCartState extends State<ActivityCart> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
-            "Importance and Urgency Info",
+            "Informasi Tingkat Kepentingan dan Mendesak",
             style: subHeaderStyleBold,
           ),
           content: SizedBox(
@@ -128,7 +126,7 @@ class _ActivityCartState extends State<ActivityCart> {
                 Navigator.of(context).pop();
               },
               child: Text(
-                "Close",
+                "Tutup",
                 style: textStyle,
               ),
             ),
@@ -145,7 +143,7 @@ class _ActivityCartState extends State<ActivityCart> {
     DateTime dateTime = DateTime.parse(dateStr);
 
     // Format the date using DateFormat
-    DateFormat formatter = DateFormat.yMMMMd(); // "March 24, 2024"
+    DateFormat formatter = DateFormat.yMMMMd('id'); // "March 24, 2024"
     String formattedDate = formatter.format(dateTime);
 
     return formattedDate;
@@ -161,6 +159,13 @@ class _ActivityCartState extends State<ActivityCart> {
   String formattedTimes(DateTime datetime) {
     DateTime dateTime = DateTime.parse(datetime.toString());
     String formattedTime = DateFormat('hh:mm a').format(dateTime);
+    return formattedTime;
+  }
+
+  String formattedTimesEnd(DateTime datetime, int dur) {
+    DateTime dateTime = DateTime.parse(datetime.toString());
+    String formattedTime =
+        DateFormat('hh:mm a').format(dateTime.add(Duration(minutes: dur)));
     return formattedTime;
   }
 
@@ -182,7 +187,7 @@ class _ActivityCartState extends State<ActivityCart> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {
-      throw 'Could not launch $url';
+      throw 'Tidak dapat meluncurkan: $url';
     }
   }
 
@@ -196,32 +201,18 @@ class _ActivityCartState extends State<ActivityCart> {
   Future<String> getCategoryData(String? catID) async {
     DocumentSnapshot<Map<String, dynamic>> data = await FirebaseFirestore
         .instance
-        .collection('categories')
+        .collection('kategoris')
         .doc(catID)
         .get();
 
     if (data.exists) {
-      return data['title'];
+      return data['nama'];
     } else {
-      return 'Unknown';
+      return 'Tidak ada';
     }
   }
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
-
-  // Function to convert repeat interval to days
-  int intervalToDays(String repeatInterval) {
-    switch (repeatInterval) {
-      case 'Daily':
-        return 1;
-      case 'Weekly':
-        return 7;
-      case 'Monthly':
-        return 30;
-      default:
-        return 1;
-    }
-  }
 
   Future<void> beneranTestAlgoritma() async {
     var groupDate =
@@ -233,6 +224,7 @@ class _ActivityCartState extends State<ActivityCart> {
       setState(() {
         scheduleList.clear();
         processedListWithStart.clear();
+        processedListFixed.clear();
         processedListWithoutStart.clear();
         remainingList.clear();
         temporaryActiv.clear();
@@ -243,19 +235,29 @@ class _ActivityCartState extends State<ActivityCart> {
             title: s.title,
             impType: s.impType,
             urgType: s.urgType,
+            rptIntv: s.rptIntv,
+            rptDur: s.rptDur,
+            cat: s.cat,
             date: s.date,
             strTime: s.strTime,
             duration: s.duration,
+            isFixed: s.isFixed,
           ));
         }
 
-        processedListWithStart =
-            temporaryActiv.where((element) => element.strTime != null).toList();
+        processedListWithStart = temporaryActiv
+            .where((element) =>
+                element.strTime != null && element.isFixed == false)
+            .toList();
         processedListWithoutStart =
             temporaryActiv.where((element) => element.strTime == null).toList();
+        processedListFixed = temporaryActiv
+            .where(
+                (element) => element.strTime != null && element.isFixed == true)
+            .toList();
 
-        print(processedListWithStart);
-        print(processedListWithoutStart);
+        // print(processedListWithStart);
+        // print(processedListWithoutStart);
 
         if (processedListWithStart.isEmpty || processedListWithStart == []) {
           _isStartExist = false;
@@ -294,13 +296,11 @@ class _ActivityCartState extends State<ActivityCart> {
   }
 
   Future<void> testAlgoritma(String startInput) async {
-    AlgorithmSchedule? currentSchedule;
+    AddActivityList? currentSchedule;
 
     remainingList.addAll(processedListWithoutStart);
 
-    processedListWithStart.sort((a, b) =>
-        formattedActivityTimeOnly(a.strTime ?? "")
-            .compareTo(formattedActivityTimeOnly(b.strTime ?? "")));
+    processedListWithStart.sort((a, b) => (a.strTime!).compareTo(b.strTime!));
 
     DateTime date =
         DateFormat("yyyy-MM-dd").parse(processedListWithStart.first.date);
@@ -310,12 +310,8 @@ class _ActivityCartState extends State<ActivityCart> {
             date.year,
             date.month,
             date.day,
-            formattedActivityTimeOnly(
-                    processedListWithStart.first.strTime ?? "")
-                .hour,
-            formattedActivityTimeOnly(
-                    processedListWithStart.first.strTime ?? "")
-                .minute,
+            processedListWithStart.first.strTime!.hour,
+            processedListWithStart.first.strTime!.minute,
           )
         : DateTime(
             date.year,
@@ -325,6 +321,31 @@ class _ActivityCartState extends State<ActivityCart> {
             formattedActivityTimeOnly(startInput).minute,
           );
 
+    for (var fix in processedListFixed) {
+      DateTime tanggal = DateFormat("yyyy-MM-dd").parse(fix.date);
+
+      DateTime waktuMulai = DateTime(
+        tanggal.year,
+        tanggal.month,
+        tanggal.day,
+        fix.strTime!.hour,
+        fix.strTime!.minute,
+      );
+
+      scheduleList2.add(AddActivityList(
+        userID: userID,
+        impType: fix.impType,
+        urgType: fix.urgType,
+        isFixed: fix.isFixed,
+        duration: fix.duration,
+        cat: fix.cat,
+        title: fix.title,
+        strTime: waktuMulai,
+        endTime: waktuMulai.add(Duration(minutes: fix.duration)),
+        date: fix.date,
+      ));
+    }
+
     while (processedListWithStart.isNotEmpty) {
       AddActivityList currentActivity = processedListWithStart.removeAt(0);
 
@@ -333,12 +354,8 @@ class _ActivityCartState extends State<ActivityCart> {
         date2.year,
         date2.month,
         date2.day,
-        formattedActivityTimeOnly(
-                currentActivity.strTime ?? currentTime.toString())
-            .hour,
-        formattedActivityTimeOnly(
-                currentActivity.strTime ?? currentTime.toString())
-            .minute,
+        currentActivity.strTime!.hour,
+        currentActivity.strTime!.minute,
       );
 
       DateTime? processedStartAct;
@@ -349,17 +366,27 @@ class _ActivityCartState extends State<ActivityCart> {
           date3.year,
           date3.month,
           date3.day,
-          formattedActivityTimeOnly(processedListWithStart.first.strTime ??
-                  currentTime.toString())
-              .hour,
-          formattedActivityTimeOnly(processedListWithStart.first.strTime ??
-                  currentTime.toString())
-              .minute,
+          processedListWithStart.first.strTime!.hour,
+          processedListWithStart.first.strTime!.minute,
         );
       }
+
       if (currentTime.isBefore(currentStartAct) ||
           currentTime.isAtSameMomentAs(currentStartAct)) {
+        isCollision = false;
         while (currentActivity.duration > 0) {
+          //
+          // Check if currentTime overlaps with any fixed activity in scheduleList2
+          AddActivityList? overlappingFixedActivity =
+              scheduleList2.firstWhereOrNull((fixedActivity) {
+            return fixedActivity.strTime == currentTime;
+          });
+
+          if (overlappingFixedActivity != null) {
+            currentTime = overlappingFixedActivity.endTime!;
+            isCollision = true;
+          }
+          //
           if (processedListWithStart.isNotEmpty &&
               processedStartAct != null &&
               (processedStartAct
@@ -367,48 +394,71 @@ class _ActivityCartState extends State<ActivityCart> {
                   processedStartAct.isAtSameMomentAs(
                       currentTime.add(const Duration(minutes: 1))))) {
             AddActivityList nextActivity = processedListWithStart.first;
-
-            if (getPriorityRank(nextActivity.impType!, nextActivity.urgType!) >
+            if (overlappingFixedActivity != null) {
+              currentTime = overlappingFixedActivity.endTime!;
+            } else if (getPriorityRank(
+                    nextActivity.impType!, nextActivity.urgType!) >
                 getPriorityRank(
                     currentActivity.impType!, currentActivity.urgType!)) {
-              scheduleList.add(AlgorithmSchedule(
-                title: currentActivity.title,
-                impt: currentActivity.impType ?? "",
-                urgnt: currentActivity.urgType ?? "",
-                start: currentTime,
-                date: DateFormat('yyyy-MM-dd').format(currentTime),
-                end: currentTime.add(const Duration(minutes: 1)),
-              ));
+              if (!isCollision) {
+                scheduleList.add(AddActivityList(
+                  userID: userID,
+                  impType: currentActivity.impType,
+                  urgType: currentActivity.urgType,
+                  isFixed: currentActivity.isFixed,
+                  cat: currentActivity.cat,
+                  duration: 0,
+                  title: currentActivity.title,
+                  strTime: currentTime,
+                  endTime: currentTime.add(const Duration(minutes: 1)),
+                  date: DateFormat('yyyy-MM-dd').format(currentTime),
+                ));
+              }
               remainingList.add(AddActivityList(
                 userID: userID,
+                isFixed: currentActivity.isFixed,
                 title: currentActivity.title,
+                cat: currentActivity.cat,
                 impType: currentActivity.impType,
                 urgType: currentActivity.urgType,
                 date: DateFormat('yyyy-MM-dd').format(currentTime),
                 duration: currentActivity.duration - 1,
               ));
-              currentTime = currentTime.add(const Duration(minutes: 1));
+              print(currentTime);
+              if (!isCollision) {
+                currentTime = currentTime.add(const Duration(minutes: 1));
+              }
               break;
             } else {
               currentActivity.duration -= 1;
-              scheduleList.add(AlgorithmSchedule(
+              scheduleList.add(AddActivityList(
+                  userID: userID,
+                  isFixed: currentActivity.isFixed,
                   title: currentActivity.title,
-                  impt: currentActivity.impType ?? "",
-                  urgnt: currentActivity.urgType ?? "",
+                  cat: currentActivity.cat,
+                  impType: currentActivity.impType,
+                  urgType: currentActivity.urgType,
                   date: DateFormat('yyyy-MM-dd').format(currentTime),
-                  start: currentTime,
-                  end: currentTime.add(const Duration(minutes: 1))));
+                  duration: 0,
+                  strTime: currentTime,
+                  endTime: currentTime.add(const Duration(minutes: 1))));
+              print(currentTime);
               currentTime = currentTime.add(const Duration(minutes: 1));
             }
           } else {
             currentActivity.duration -= 1;
-            scheduleList.add(AlgorithmSchedule(
-                impt: currentActivity.impType ?? "",
-                urgnt: currentActivity.urgType ?? "",
+            scheduleList.add(AddActivityList(
+                userID: userID,
+                isFixed: currentActivity.isFixed,
+                cat: currentActivity.cat,
                 title: currentActivity.title,
+                impType: currentActivity.impType,
+                urgType: currentActivity.urgType,
                 date: DateFormat('yyyy-MM-dd').format(currentTime),
-                start: currentTime,
-                end: currentTime.add(const Duration(minutes: 1))));
+                duration: 0,
+                strTime: currentTime,
+                endTime: currentTime.add(const Duration(minutes: 1))));
+            print(currentTime);
             currentTime = currentTime.add(const Duration(minutes: 1));
           }
         }
@@ -416,6 +466,8 @@ class _ActivityCartState extends State<ActivityCart> {
         remainingList.add(AddActivityList(
           userID: userID,
           title: currentActivity.title,
+          isFixed: currentActivity.isFixed,
+          cat: currentActivity.cat,
           impType: currentActivity.impType,
           urgType: currentActivity.urgType,
           date: DateFormat('yyyy-MM-dd').format(currentTime),
@@ -430,13 +482,17 @@ class _ActivityCartState extends State<ActivityCart> {
       AddActivityList currentActivity = remainingList.removeAt(0);
       while (currentActivity.duration > 0) {
         currentActivity.duration -= 1;
-        scheduleList.add(AlgorithmSchedule(
+        scheduleList.add(AddActivityList(
+            userID: userID,
+            isFixed: currentActivity.isFixed,
+            cat: currentActivity.cat,
             title: currentActivity.title,
-            impt: currentActivity.impType ?? "",
-            urgnt: currentActivity.urgType ?? "",
+            impType: currentActivity.impType,
+            urgType: currentActivity.urgType,
             date: DateFormat('yyyy-MM-dd').format(currentTime),
-            start: currentTime,
-            end: currentTime.add(const Duration(minutes: 1))));
+            duration: 0,
+            strTime: currentTime,
+            endTime: currentTime.add(const Duration(minutes: 1))));
         currentTime = currentTime.add(const Duration(minutes: 1));
       }
     }
@@ -451,15 +507,20 @@ class _ActivityCartState extends State<ActivityCart> {
       } else {
         if (currentSchedule.title == schedule.title &&
             currentSchedule.date == schedule.date &&
-            currentSchedule.end == schedule.start) {
-          currentSchedule = AlgorithmSchedule(
-            title: currentSchedule.title,
-            start: currentSchedule.start,
-            impt: currentSchedule.impt,
-            urgnt: currentSchedule.urgnt,
-            end: schedule.end,
-            date: currentSchedule.date,
-          );
+            currentSchedule.endTime == schedule.strTime) {
+          currentSchedule = AddActivityList(
+              cat: currentSchedule.cat,
+              rptIntv: currentSchedule.rptIntv,
+              rptDur: currentSchedule.rptDur,
+              userID: userID,
+              isFixed: currentSchedule.isFixed,
+              title: currentSchedule.title,
+              impType: currentSchedule.impType,
+              urgType: currentSchedule.urgType,
+              date: currentSchedule.date,
+              duration: 0,
+              strTime: currentSchedule.strTime,
+              endTime: schedule.endTime);
         } else {
           scheduleList2.add(currentSchedule);
           currentSchedule = schedule;
@@ -476,6 +537,22 @@ class _ActivityCartState extends State<ActivityCart> {
     }
   }
 
+  // Change format time to yyyy-MM-dd
+  String formattedActivityDateOnly(DateTime inptTime) {
+    try {
+      DateTime time = inptTime;
+
+      DateFormat formatter = DateFormat("yyyy-MM-dd");
+
+      String formattedTime = formatter.format(time);
+
+      return formattedTime;
+    } catch (e) {
+      print("Error ketika melakukan format tanggal: $e");
+      return "";
+    }
+  }
+
   Future<void> setToFirestoreWithAlgorithm() async {
     try {
       showDialog(
@@ -485,115 +562,182 @@ class _ActivityCartState extends State<ActivityCart> {
         },
       );
 
-      for (var act in widget.temporaryAct) {
-        DocumentReference actID =
-            await FirebaseFirestore.instance.collection('activities').add({
-          'title': act.title,
-          'important_type': act.impType,
-          'urgent_type': act.urgType,
-          'date': act.date,
-          'start_time': act.strTime,
-          'duration': act.duration,
-          'repeat_interval': act.rptIntv,
-          'repeat_duration': act.rptDur ?? 0,
-          'categories_id': act.cat ?? "",
-          'user_id': act.userID,
-        });
+      for (var act in scheduleList2) {
+        for (var i = 0; i < (act.rptDur ?? 1); i++) {
+          DateTime startTime = act.strTime!;
+          DateTime endTime = act.endTime!;
+          DateTime startTimeReal;
+          DateTime endTimeReal;
+          if (act.rptIntv == "Harian") {
+            startTimeReal = startTime.add(Duration(days: i));
+            endTimeReal = endTime.add(Duration(days: i));
+          } else if (act.rptIntv == "Mingguan") {
+            startTimeReal = startTime.add(Duration(days: 7 * i));
+            endTimeReal = endTime.add(Duration(days: 7 * i));
+          } else if (act.rptIntv == "Bulanan") {
+            startTimeReal = startTime.add(Duration(days: 30 * i));
+            endTimeReal = endTime.add(Duration(days: 7 * i));
+          } else if (act.rptIntv == "Tahunan") {
+            startTimeReal = startTime.add(Duration(days: 365 * i));
+            endTimeReal = endTime.add(Duration(days: 7 * i));
+          } else {
+            startTimeReal = startTime;
+            endTimeReal = endTime;
+          }
 
-        for (Locations loc in act.locations ?? []) {
-          await FirebaseFirestore.instance.collection('locations').add({
-            'address': loc.address,
-            'latitude': loc.latitude,
-            'longitude': loc.longitude,
-            'activities_id': actID.id,
-          });
-        }
+          DateTime start = startTimeReal;
+          DateTime startDate = DateFormat("yyyy-MM-dd")
+              .parse(formattedActivityDateOnly((startTimeReal)));
+          DateTime end = endTimeReal;
 
-        for (Tasks task in act.tasks ?? []) {
-          await FirebaseFirestore.instance.collection('tasks').add({
-            'title': task.task,
-            'status': task.status,
-            'activities_id': actID.id,
-          });
-        }
+          QuerySnapshot dailyActivities = await FirebaseFirestore.instance
+              .collection('kegiatans')
+              .where('waktu_mulai',
+                  isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+              .where('waktu_mulai',
+                  isLessThan: Timestamp.fromDate(
+                      startDate.add(const Duration(days: 1))))
+              .get();
 
-        for (Files file in act.files ?? []) {
-          String folder = "user_files/$userID/${actID.id}";
-          String filePath = "$folder/${file.name}";
-          await FirebaseFirestore.instance.collection('files').add({
-            'title': file.name,
-            'path': "$folder/${file.name}",
-            'activities_id': actID.id,
-          });
-          await FirebaseStorage.instance.ref(filePath).putFile(File(file.path));
-        }
+          for (var activityDoc in dailyActivities.docs) {
+            DateTime activityStart =
+                (activityDoc['waktu_mulai'] as Timestamp).toDate();
+            DateTime activityEnd =
+                (activityDoc['waktu_akhir'] as Timestamp).toDate();
 
-        for (var sch in scheduleList2) {
-          if (act.title == sch.title &&
-              act.urgType == sch.urgnt &&
-              act.impType == sch.impt) {
-            for (var i = 0; i < (act.rptDur ?? 1); i++) {
-              DateTime startTime = DateFormat("yyyy-MM-dd hh:mm a")
-                  .parse("${sch.date} ${formattedTimes(sch.start)}");
-              DateTime endTime = DateFormat("yyyy-MM-dd hh:mm a")
-                  .parse("${sch.date} ${formattedTimes(sch.end)}");
-              DateTime startTimeReal;
-              DateTime endTimeReal;
-              if (act.rptIntv == "Daily") {
-                startTimeReal = startTime.add(Duration(days: i));
-                endTimeReal = endTime.add(Duration(days: i));
-              } else if (act.rptIntv == "Weekly") {
-                startTimeReal = startTime.add(Duration(days: 7 * i));
-                endTimeReal = endTime.add(Duration(days: 7 * i));
-              } else if (act.rptIntv == "Monthly") {
-                startTimeReal = startTime.add(Duration(days: 30 * i));
-                endTimeReal = endTime.add(Duration(days: 7 * i));
-              } else if (act.rptIntv == "Yearly") {
-                startTimeReal = startTime.add(Duration(days: 365 * i));
-                endTimeReal = endTime.add(Duration(days: 7 * i));
-              } else {
-                startTimeReal = startTime;
-                endTimeReal = endTime;
-              }
-
-              DocumentReference schID = await FirebaseFirestore.instance
-                  .collection('scheduled_activities')
-                  .add({
-                'actual_start_time': Timestamp.fromDate(startTimeReal),
-                'actual_end_time': Timestamp.fromDate(endTimeReal),
-                'activities_id': actID.id,
-              });
-              for (Notifications notif in act.notif ?? []) {
-                DocumentReference notifRef = await FirebaseFirestore.instance
-                    .collection('notifications')
-                    .add({
-                  'minutes_before': notif.minute,
-                  'scheduled_activities_id': schID.id,
-                });
-
-                DateTime notifTime =
-                    startTimeReal.subtract(Duration(minutes: notif.minute));
-
-                await AwesomeNotifications().createNotification(
-                  content: NotificationContent(
-                    id: notifRef.id.hashCode,
-                    channelKey: 'activity_reminder',
-                    title: "Upcoming Activity - ${act.title}",
-                    body:
-                        "You have an activity starting soon at $startTimeReal",
-                    notificationLayout: NotificationLayout.BigText,
-                    criticalAlert: true,
-                    wakeUpScreen: true,
-                    category: NotificationCategory.Reminder,
-                  ),
-                  schedule: NotificationCalendar.fromDate(
-                    date: notifTime,
-                    preciseAlarm: true,
-                    allowWhileIdle: true,
-                  ),
-                );
+            if (start.isBefore(activityEnd) && end.isAfter(activityStart)) {
+              if (activityDoc['fixed'] == false) {
+                if (activityStart.isBefore(start)) {
+                  // Adjust start time if the activity starts before the new activity
+                  DateTime newActivityStart =
+                      start.subtract(activityEnd.difference(activityStart));
+                  await FirebaseFirestore.instance
+                      .collection('kegiatans')
+                      .doc(activityDoc.id)
+                      .update({
+                    "waktu_mulai": Timestamp.fromDate(newActivityStart),
+                    "waktu_akhir": Timestamp.fromDate(newActivityStart
+                        .add(activityEnd.difference(activityStart))),
+                  });
+                } else {
+                  // Adjust end time if the activity starts after the new activity
+                  await FirebaseFirestore.instance
+                      .collection('kegiatans')
+                      .doc(activityDoc.id)
+                      .update({
+                    "waktu_mulai": Timestamp.fromDate(end),
+                    "waktu_akhir": Timestamp.fromDate(
+                        end.add(activityEnd.difference(activityStart))),
+                  });
+                }
               }
             }
+          }
+
+          DocumentReference actID;
+
+          String? existingId = firstKegiatanIdMap[act.title];
+
+          if (existingId == null) {
+            // Belum ada ID dokumen untuk title ini, tambahkan dokumen baru dan simpan ID-nya
+            actID =
+                await FirebaseFirestore.instance.collection('kegiatans').add({
+              'nama': act.title,
+              'tipe_kepentingan': act.impType,
+              'tipe_mendesak': act.urgType,
+              'waktu_mulai': Timestamp.fromDate(startTimeReal),
+              'waktu_akhir': Timestamp.fromDate(endTimeReal),
+              'interval_pengulangan': act.rptIntv ?? "Tidak",
+              'durasi_pengulangan': act.rptDur ?? 0,
+              'kategoris_id': act.cat,
+              'users_id': act.userID,
+              'status': false,
+              'fixed': act.isFixed,
+            });
+
+            // Simpan ID dokumen pertama dengan title ini
+            firstKegiatanIdMap[act.title] = actID.id;
+
+            // Perbarui dokumen dengan ID pertama
+            await actID.update({'kegiatans_id': actID.id});
+          } else {
+            // Sudah ada ID dokumen untuk title ini, tambahkan dokumen baru dengan ID pertama
+            actID =
+                await FirebaseFirestore.instance.collection('kegiatans').add({
+              'nama': act.title,
+              'tipe_kepentingan': act.impType,
+              'tipe_mendesak': act.urgType,
+              'waktu_mulai': Timestamp.fromDate(startTimeReal),
+              'waktu_akhir': Timestamp.fromDate(endTimeReal),
+              'interval_pengulangan': act.rptIntv,
+              'durasi_pengulangan': act.rptDur ?? 0,
+              'kategoris_id': act.cat,
+              'users_id': act.userID,
+              'status': false,
+              'fixed': act.isFixed,
+              'kegiatans_id': existingId,
+            });
+          }
+
+          for (Notifications notif in act.notif ?? []) {
+            DocumentReference notifRef =
+                await FirebaseFirestore.instance.collection('notifikasis').add({
+              'menit_sebelum': notif.minute,
+              'kegiatans_id': actID.id,
+            });
+
+            DateTime notifTime =
+                startTimeReal.subtract(Duration(minutes: notif.minute));
+
+            await AwesomeNotifications().createNotification(
+              content: NotificationContent(
+                id: notifRef.id.hashCode,
+                channelKey: 'activity_reminder',
+                title: "Kegiatan Selanjutnya - ${act.title}",
+                body:
+                    "Kegiatanmu akan dimulai pada ${formattedTimes(startTimeReal)}",
+                backgroundColor: const Color.fromARGB(255, 255, 170, 0),
+                notificationLayout: NotificationLayout.BigText,
+                criticalAlert: true,
+                wakeUpScreen: true,
+                category: NotificationCategory.Reminder,
+              ),
+              schedule: NotificationCalendar.fromDate(
+                date: notifTime,
+                preciseAlarm: true,
+                allowWhileIdle: true,
+              ),
+            );
+          }
+
+          for (Locations loc in act.locations ?? []) {
+            await FirebaseFirestore.instance.collection('lokasis').add({
+              'alamat': loc.address,
+              'latitude': loc.latitude,
+              'longitude': loc.longitude,
+              'kegiatans_id': actID.id,
+            });
+          }
+
+          for (Tasks task in act.tasks ?? []) {
+            await FirebaseFirestore.instance.collection('subtugass').add({
+              'nama': task.task,
+              'status': task.status,
+              'kegiatans_id': actID.id,
+            });
+          }
+
+          for (Files file in act.files ?? []) {
+            String folder = "user_files/$userID/${actID.id}";
+            String filePath = "$folder/${file.name}";
+            await FirebaseFirestore.instance.collection('files').add({
+              'nama': file.name,
+              'path': "$folder/${file.name}",
+              'kegiatans_id': actID.id,
+            });
+            await FirebaseStorage.instance
+                .ref(filePath)
+                .putFile(File(file.path));
           }
         }
       }
@@ -605,8 +749,9 @@ class _ActivityCartState extends State<ActivityCart> {
 
       AlertInformation.showDialogBox(
           context: context,
-          title: "Successfully Scheduled",
-          message: "All of your activities successfully scheduled.");
+          title: "Kegiatanmu Berhasil Dijadwalkan",
+          message:
+              "Seluruh Kegiatan kamu telah berhasil dijadwalkan. Terima kasih.");
     } catch (e) {
       Navigator.of(context).pop();
       Navigator.of(context).pop();
@@ -632,66 +777,26 @@ class _ActivityCartState extends State<ActivityCart> {
       for (var act in widget.temporaryAct) {
         if (act.strTime == null || act.strTime == "") {
           Navigator.of(context).pop();
-          showInfoDialog("Can't Schedule",
-              "If you are NOT USING the schedule RECOMMENDATION FEATURE, please ensure  all activities have a start time.");
+          AlertInformation.showDialogBox(
+              context: context,
+              title: "Tidak Dapat Menjadwalkan",
+              message:
+                  "Jika kamu tidak menggunakan FITUR REKOMENDASI, Mohon untuk memastikan semua kegiatan memiliki waktu mulai. Terima kasih.");
           return;
         }
       }
 
       for (var act in widget.temporaryAct) {
-        DocumentReference actID =
-            await FirebaseFirestore.instance.collection('activities').add({
-          'title': act.title,
-          'important_type': act.impType,
-          'urgent_type': act.urgType,
-          'date': act.date,
-          'start_time': act.strTime,
-          'duration': act.duration,
-          'repeat_interval': act.rptIntv,
-          'repeat_duration': act.rptDur ?? 0,
-          'categories_id': act.cat ?? "",
-          'user_id': act.userID,
-        });
-
-        for (Locations loc in act.locations ?? []) {
-          await FirebaseFirestore.instance.collection('locations').add({
-            'address': loc.address,
-            'latitude': loc.latitude,
-            'longitude': loc.longitude,
-            'activities_id': actID.id,
-          });
-        }
-
-        for (Tasks task in act.tasks ?? []) {
-          await FirebaseFirestore.instance.collection('tasks').add({
-            'title': task.task,
-            'status': task.status,
-            'activities_id': actID.id,
-          });
-        }
-
-        for (Files file in act.files ?? []) {
-          String folder = "user_files/$userID/${actID.id}";
-          String filePath = "$folder/${file.name}";
-          await FirebaseFirestore.instance.collection('files').add({
-            'title': file.name,
-            'path': "$folder/${file.name}",
-            'activities_id': actID.id,
-          });
-          await FirebaseStorage.instance.ref(filePath).putFile(File(file.path));
-        }
-
         for (var i = 0; i < (act.rptDur ?? 1); i++) {
-          DateTime startTime = DateFormat("yyyy-MM-dd hh:mm a")
-              .parse("${act.date} ${act.strTime ?? '12:00 AM'}");
+          DateTime startTime = act.strTime!;
           DateTime startTimeReal;
-          if (act.rptIntv == "Daily") {
+          if (act.rptIntv == "Harian") {
             startTimeReal = startTime.add(Duration(days: i));
-          } else if (act.rptIntv == "Weekly") {
+          } else if (act.rptIntv == "Mingguan") {
             startTimeReal = startTime.add(Duration(days: 7 * i));
-          } else if (act.rptIntv == "Monthly") {
+          } else if (act.rptIntv == "Bulanan") {
             startTimeReal = startTime.add(Duration(days: 30 * i));
-          } else if (act.rptIntv == "Yearly") {
+          } else if (act.rptIntv == "Tahunan") {
             startTimeReal = startTime.add(Duration(days: 365 * i));
           } else {
             startTimeReal = startTime;
@@ -699,26 +804,113 @@ class _ActivityCartState extends State<ActivityCart> {
 
           DateTime endTime = startTimeReal.add(Duration(minutes: act.duration));
 
+          DateTime start = startTimeReal;
+          DateTime startDate = DateFormat("yyyy-MM-dd")
+              .parse(formattedActivityDateOnly((startTimeReal)));
+          DateTime end = endTime;
+
+          QuerySnapshot dailyActivities = await FirebaseFirestore.instance
+              .collection('kegiatans')
+              .where('waktu_mulai',
+                  isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+              .where('waktu_mulai',
+                  isLessThan: Timestamp.fromDate(
+                      startDate.add(const Duration(days: 1))))
+              .get();
+
+          for (var activityDoc in dailyActivities.docs) {
+            DateTime activityStart =
+                (activityDoc['waktu_mulai'] as Timestamp).toDate();
+            DateTime activityEnd =
+                (activityDoc['waktu_akhir'] as Timestamp).toDate();
+
+            if (start.isBefore(activityEnd) && end.isAfter(activityStart)) {
+              if (activityDoc['fixed'] == false) {
+                if (activityStart.isBefore(start)) {
+                  // Adjust start time if the activity starts before the new activity
+                  DateTime newActivityStart =
+                      start.subtract(activityEnd.difference(activityStart));
+                  await FirebaseFirestore.instance
+                      .collection('kegiatans')
+                      .doc(activityDoc.id)
+                      .update({
+                    "waktu_mulai": Timestamp.fromDate(newActivityStart),
+                    "waktu_akhir": Timestamp.fromDate(newActivityStart
+                        .add(activityEnd.difference(activityStart))),
+                  });
+                } else {
+                  // Adjust end time if the activity starts after the new activity
+                  await FirebaseFirestore.instance
+                      .collection('kegiatans')
+                      .doc(activityDoc.id)
+                      .update({
+                    "waktu_mulai": Timestamp.fromDate(end),
+                    "waktu_akhir": Timestamp.fromDate(
+                        end.add(activityEnd.difference(activityStart))),
+                  });
+                }
+              }
+            }
+          }
+          int remainingMinutes = 0;
+
+          DocumentReference actID;
+
+          String? existingId = firstKegiatanIdMap[act.title];
+
           while (endTime.isAfter(DateTime(startTimeReal.year,
               startTimeReal.month, startTimeReal.day, 23, 59))) {
             DateTime endOfDay = DateTime(startTimeReal.year,
-                startTimeReal.month, startTimeReal.day, 23, 59);
-            int remainingMinutes = endTime.difference(endOfDay).inMinutes;
+                startTimeReal.month, startTimeReal.day + 1, 0, 0);
+            remainingMinutes = endTime.difference(endOfDay).inMinutes;
 
-            DocumentReference schID = await FirebaseFirestore.instance
-                .collection('scheduled_activities')
-                .add({
-              'actual_start_time': Timestamp.fromDate(startTimeReal),
-              'actual_end_time': Timestamp.fromDate(endOfDay),
-              'activities_id': actID.id,
-            });
+            if (existingId == null) {
+              // Belum ada ID dokumen untuk title ini, tambahkan dokumen baru dan simpan ID-nya
+              actID =
+                  await FirebaseFirestore.instance.collection('kegiatans').add({
+                'nama': act.title,
+                'tipe_kepentingan': act.impType,
+                'tipe_mendesak': act.urgType,
+                'waktu_mulai': Timestamp.fromDate(startTimeReal),
+                'waktu_akhir': Timestamp.fromDate(endOfDay),
+                'interval_pengulangan': act.rptIntv,
+                'durasi_pengulangan': act.rptDur ?? 0,
+                'kategoris_id': act.cat,
+                'users_id': act.userID,
+                'status': false,
+                'fixed': act.isFixed,
+              });
+
+              // Simpan ID dokumen pertama dengan title ini
+              firstKegiatanIdMap[act.title] = actID.id;
+
+              // Perbarui dokumen dengan ID pertama
+              await actID.update({'kegiatans_id': actID.id});
+            } else {
+              // Sudah ada ID dokumen untuk title ini, tambahkan dokumen baru dengan ID pertama
+              actID =
+                  await FirebaseFirestore.instance.collection('kegiatans').add({
+                'nama': act.title,
+                'tipe_kepentingan': act.impType,
+                'tipe_mendesak': act.urgType,
+                'waktu_mulai': Timestamp.fromDate(startTimeReal),
+                'waktu_akhir': Timestamp.fromDate(endOfDay),
+                'interval_pengulangan': act.rptIntv,
+                'durasi_pengulangan': act.rptDur ?? 0,
+                'kategoris_id': act.cat,
+                'users_id': act.userID,
+                'status': false,
+                'fixed': act.isFixed,
+                'kegiatans_id': existingId,
+              });
+            }
 
             for (Notifications notif in act.notif ?? []) {
               DocumentReference notify = await FirebaseFirestore.instance
-                  .collection('notifications')
+                  .collection('notifikasis')
                   .add({
-                'minutes_before': notif.minute,
-                'scheduled_activities_id': schID.id,
+                'menit_sebelum': notif.minute,
+                'kegiatans_id': actID.id,
               });
 
               DateTime notiftime =
@@ -728,8 +920,9 @@ class _ActivityCartState extends State<ActivityCart> {
                 content: NotificationContent(
                   id: notify.id.hashCode,
                   channelKey: 'activity_reminder',
-                  title: "Upcoming Activity - ${act.title}",
-                  body: "You have an activity starting soon at $startTime",
+                  title: "Kegiatan Selanjutnya - ${act.title}",
+                  body:
+                      "Kegiatanmu akan dimulai pada ${formattedTimes(startTimeReal)}",
                   notificationLayout: NotificationLayout.BigText,
                   criticalAlert: true,
                   wakeUpScreen: true,
@@ -743,45 +936,140 @@ class _ActivityCartState extends State<ActivityCart> {
               );
             }
 
+            for (Files file in act.files ?? []) {
+              String folder = "user_files/$userID/${actID.id}";
+              String filePath = "$folder/${file.name}";
+              await FirebaseFirestore.instance.collection('files').add({
+                'nama': file.name,
+                'path': "$folder/${file.name}",
+                'kegiatans_id': actID.id,
+              });
+              await FirebaseStorage.instance
+                  .ref(filePath)
+                  .putFile(File(file.path));
+            }
+
+            for (Locations loc in act.locations ?? []) {
+              await FirebaseFirestore.instance.collection('lokasis').add({
+                'alamat': loc.address,
+                'latitude': loc.latitude,
+                'longitude': loc.longitude,
+                'kegiatans_id': actID.id,
+              });
+            }
+
+            for (Tasks task in act.tasks ?? []) {
+              await FirebaseFirestore.instance.collection('subtugass').add({
+                'nama': task.task,
+                'status': task.status,
+                'kegiatans_id': actID.id,
+              });
+            }
+
             startTimeReal = DateTime(startTimeReal.year, startTimeReal.month,
                 startTimeReal.day + 1, 0, 0);
             endTime = startTimeReal.add(Duration(minutes: remainingMinutes));
           }
-          DocumentReference schID = await FirebaseFirestore.instance
-              .collection('scheduled_activities')
-              .add({
-            'actual_start_time': Timestamp.fromDate(startTimeReal),
-            'actual_end_time': Timestamp.fromDate(endTime),
-            'activities_id': actID.id,
-          });
-          for (Notifications notif in act.notif ?? []) {
-            DocumentReference notifRef = await FirebaseFirestore.instance
-                .collection('notifications')
-                .add({
-              'minutes_before': notif.minute,
-              'scheduled_activities_id': schID.id,
+
+          if (existingId == null) {
+            // Belum ada ID dokumen untuk title ini, tambahkan dokumen baru dan simpan ID-nya
+            actID =
+                await FirebaseFirestore.instance.collection('kegiatans').add({
+              'nama': act.title,
+              'tipe_kepentingan': act.impType,
+              'tipe_mendesak': act.urgType,
+              'waktu_mulai': Timestamp.fromDate(startTimeReal),
+              'waktu_akhir': Timestamp.fromDate(endTime),
+              'interval_pengulangan': act.rptIntv,
+              'durasi_pengulangan': act.rptDur ?? 0,
+              'kategoris_id': act.cat,
+              'users_id': act.userID,
+              'status': false,
+              'fixed': act.isFixed,
             });
 
-            DateTime notifTime =
+            // Simpan ID dokumen pertama dengan title ini
+            firstKegiatanIdMap[act.title] = actID.id;
+
+            // Perbarui dokumen dengan ID pertama
+            await actID.update({'kegiatans_id': actID.id});
+          } else {
+            // Sudah ada ID dokumen untuk title ini, tambahkan dokumen baru dengan ID pertama
+            actID =
+                await FirebaseFirestore.instance.collection('kegiatans').add({
+              'nama': act.title,
+              'tipe_kepentingan': act.impType,
+              'tipe_mendesak': act.urgType,
+              'waktu_mulai': Timestamp.fromDate(startTimeReal),
+              'waktu_akhir': Timestamp.fromDate(endTime),
+              'interval_pengulangan': act.rptIntv,
+              'durasi_pengulangan': act.rptDur ?? 0,
+              'kategoris_id': act.cat,
+              'users_id': act.userID,
+              'status': false,
+              'fixed': act.isFixed,
+              'kegiatans_id': existingId,
+            });
+          }
+
+          for (Notifications notif in act.notif ?? []) {
+            DocumentReference notify =
+                await FirebaseFirestore.instance.collection('notifikasis').add({
+              'menit_sebelum': notif.minute,
+              'kegiatans_id': actID.id,
+            });
+
+            DateTime notiftime =
                 startTimeReal.subtract(Duration(minutes: notif.minute));
 
             await AwesomeNotifications().createNotification(
               content: NotificationContent(
-                id: notifRef.id.hashCode,
+                id: notify.id.hashCode,
                 channelKey: 'activity_reminder',
-                title: "Upcoming Activity - ${act.title}",
-                body: "You have an activity starting soon at $startTimeReal",
+                title: "Kegiatan Selanjutnya - ${act.title}",
+                body:
+                    "Kegiatanmu akan dimulai pada ${formattedTimes(startTimeReal)}",
                 notificationLayout: NotificationLayout.BigText,
                 criticalAlert: true,
                 wakeUpScreen: true,
                 category: NotificationCategory.Reminder,
               ),
               schedule: NotificationCalendar.fromDate(
-                date: notifTime,
+                date: notiftime,
                 preciseAlarm: true,
                 allowWhileIdle: true,
               ),
             );
+          }
+
+          for (Files file in act.files ?? []) {
+            String folder = "user_files/$userID/${actID.id}";
+            String filePath = "$folder/${file.name}";
+            await FirebaseFirestore.instance.collection('files').add({
+              'nama': file.name,
+              'path': "$folder/${file.name}",
+              'kegiatans_id': actID.id,
+            });
+            await FirebaseStorage.instance
+                .ref(filePath)
+                .putFile(File(file.path));
+          }
+
+          for (Locations loc in act.locations ?? []) {
+            await FirebaseFirestore.instance.collection('lokasis').add({
+              'alamat': loc.address,
+              'latitude': loc.latitude,
+              'longitude': loc.longitude,
+              'kegiatans_id': actID.id,
+            });
+          }
+
+          for (Tasks task in act.tasks ?? []) {
+            await FirebaseFirestore.instance.collection('subtugass').add({
+              'nama': task.task,
+              'status': task.status,
+              'kegiatans_id': actID.id,
+            });
           }
         }
       }
@@ -792,8 +1080,9 @@ class _ActivityCartState extends State<ActivityCart> {
 
       AlertInformation.showDialogBox(
         context: context,
-        title: "Successfully Scheduled",
-        message: "All of your activities successfully scheduled.",
+        title: "Kegiatan Telah Sukses Dijadwalkan",
+        message:
+            "Semua kegiatan kamu telah berhasil untuk dijadwalkan. Terima kasih.",
       );
     } catch (e) {
       Navigator.of(context).pop();
@@ -806,41 +1095,12 @@ class _ActivityCartState extends State<ActivityCart> {
     }
   }
 
-  void showInfoDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext ctxt) {
-        return AlertDialog(
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: subHeaderStyleBold,
-              ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () {
-                  Navigator.of(ctxt).pop();
-                },
-              ),
-            ],
-          ),
-          content: Text(
-            message,
-            style: textStyle,
-          ),
-        );
-      },
-    );
-  }
-
   void tabAlgorithm() {
     showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text("Recommended Schedule", style: subHeaderStyleBold),
+            title: Text("Jadwal Rekomendasi", style: subHeaderStyleBold),
             content: SizedBox(
               width: double.minPositive,
               height: MediaQuery.of(context).size.height * 0.5,
@@ -853,13 +1113,13 @@ class _ActivityCartState extends State<ActivityCart> {
                       tabs: [
                         Tab(
                           child: Text(
-                            "Before",
+                            "Sebelum",
                             style: textStyleBold,
                           ),
                         ),
                         Tab(
                           child: Text(
-                            "After",
+                            "Sesudah",
                             style: textStyleBold,
                           ),
                         ),
@@ -892,7 +1152,7 @@ class _ActivityCartState extends State<ActivityCart> {
                   ),
                   child: // Space between icon and text
                       Text(
-                    'Schedule it',
+                    'Jadwalkan',
                     style: textStyleBoldWhite,
                   ),
                 ),
@@ -905,9 +1165,9 @@ class _ActivityCartState extends State<ActivityCart> {
                     scheduleList2.clear();
                     processedListWithStart.clear();
                     processedListWithoutStart.clear();
+                    processedListFixed.clear();
                     remainingList.clear();
                     temporaryActiv.clear();
-                    groupedSchedule.clear();
                   });
                   print(scheduleList2);
                   Navigator.of(context).pop();
@@ -925,7 +1185,7 @@ class _ActivityCartState extends State<ActivityCart> {
                     ),
                   ),
                   child: Text(
-                    'Cancel',
+                    'Batal',
                     style: textStyleBold,
                   ),
                 ),
@@ -964,11 +1224,11 @@ class _ActivityCartState extends State<ActivityCart> {
                   ),
                   act.strTime == null
                       ? Text(
-                          "Not Decided",
+                          "Tidak ada",
                           style: textStyle,
                         )
                       : Text(
-                          "${act.strTime ?? 0} - ${formattedActivityEndTimeOnly(act.strTime ?? "", act.duration)}",
+                          "${formattedTimes(act.strTime!)} - ${formattedTimesEnd(act.strTime!, act.duration)}",
                           style: textStyle,
                         ),
                 ],
@@ -984,7 +1244,7 @@ class _ActivityCartState extends State<ActivityCart> {
     return ListView.builder(
       itemCount: scheduleList2.length,
       itemBuilder: (context, index) {
-        AlgorithmSchedule sch = scheduleList2[index];
+        AddActivityList sch = scheduleList2[index];
         return Container(
           padding: const EdgeInsets.only(
             left: 10,
@@ -994,53 +1254,22 @@ class _ActivityCartState extends State<ActivityCart> {
           ),
           margin: const EdgeInsets.only(top: 5),
           decoration: BoxDecoration(
-            color: getPriorityColor(sch.impt, sch.urgnt),
+            color: getPriorityColor(sch.impType, sch.urgType),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      sch.title,
-                      style: subHeaderStyleBold,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  // Row(
-                  //   children: [
-                  //     IconButton(
-                  //       icon: const Icon(
-                  //         Icons.edit,
-                  //         color: Colors.black,
-                  //       ),
-                  //       onPressed: () {
-                  //         editSchedule(index);
-                  //       },
-                  //     ),
-                  //     IconButton(
-                  //       icon: const Icon(
-                  //         Icons.delete,
-                  //         color: Colors.black,
-                  //       ),
-                  //       onPressed: () {
-                  //         setState(() {
-                  //           deleteSchedule(index);
-                  //         });
-                  //       },
-                  //     ),
-                  //   ],
-                  // ),
-                ],
+              Text(
+                sch.title,
+                style: subHeaderStyleBold,
+                textAlign: TextAlign.center,
               ),
               Text(
                 sch.date,
-                style: textStyleBold,
+                style: textStyle,
               ),
               Text(
-                "${formattedTimes(sch.start)} - ${formattedTimes(sch.end)}",
+                "${formattedTimes(sch.strTime!)} - ${formattedTimes(sch.endTime!)}",
                 style: textStyleBold,
               ),
             ],
@@ -1049,226 +1278,6 @@ class _ActivityCartState extends State<ActivityCart> {
       },
     );
   }
-
-  // void deleteSchedule(int index) {
-  //   setState(() {
-  //     scheduleList2.removeAt(index);
-  //   });
-  // }
-
-  // void editSchedule(int index) {
-  //   final schedule = scheduleList2[index];
-  //   final startController =
-  //       TextEditingController(text: formattedTimes(schedule.start));
-  //   final endController =
-  //       TextEditingController(text: formattedTimes(schedule.end));
-
-  //   showDialog(
-  //     context: context,
-  //     builder: (context) {
-  //       return AlertDialog(
-  //         title: Text('Edit Schedule'),
-  //         content: Form(
-  //           key: _formKey,
-  //           child: Column(
-  //             mainAxisSize: MainAxisSize.min,
-  //             children: [
-  //               GestureDetector(
-  //                 onTap: () {
-  //                   showTimePicker(
-  //                     context: context,
-  //                     initialTime: TimeOfDay.now(),
-  //                   ).then((selectedTime) {
-  //                     if (selectedTime != null) {
-  //                       setState(() {
-  //                         // Convert selectedTime to AM/PM format
-  //                         String period =
-  //                             selectedTime.period == DayPeriod.am ? 'AM' : 'PM';
-  //                         // Extract hours and minutes
-  //                         int hours = selectedTime.hourOfPeriod;
-  //                         int minutes = selectedTime.minute;
-  //                         // Format the time as a string
-  //                         String formattedTime =
-  //                             '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')} $period';
-  //                         // Update the text field with the selected time
-  //                         startController.text = formattedTime;
-
-  //                         print(startController.text);
-  //                       });
-  //                     }
-  //                   });
-  //                 },
-  //                 child: Container(
-  //                   padding: const EdgeInsets.only(
-  //                     left: 10,
-  //                     right: 10,
-  //                   ),
-  //                   alignment: Alignment.centerLeft,
-  //                   height: 50,
-  //                   width: double.infinity,
-  //                   decoration: BoxDecoration(
-  //                     border: Border.all(
-  //                       color: Colors.grey,
-  //                       width: 1.0,
-  //                     ),
-  //                     borderRadius: BorderRadius.circular(15),
-  //                   ),
-  //                   child: Row(
-  //                     children: [
-  //                       Expanded(
-  //                         flex: 6,
-  //                         child: TextFormField(
-  //                           autofocus: false,
-  //                           readOnly: true,
-  //                           keyboardType: TextInputType.text,
-  //                           textCapitalization: TextCapitalization.sentences,
-  //                           decoration: InputDecoration(
-  //                             hintText: "When do you want to start?",
-  //                             hintStyle: textStyleGrey,
-  //                           ),
-  //                           validator: (v) {
-  //                             if (v == null || v.isEmpty) {
-  //                               return 'Opps, You need to fill this';
-  //                             } else {
-  //                               return null;
-  //                             }
-  //                           },
-  //                           controller: startController,
-  //                         ),
-  //                       ),
-  //                       const SizedBox(
-  //                         width: 5,
-  //                       ),
-  //                       const Expanded(
-  //                         flex: 2,
-  //                         child: Icon(
-  //                           Icons.access_time,
-  //                           color: Colors.grey,
-  //                         ),
-  //                       ),
-  //                     ],
-  //                   ),
-  //                 ),
-  //               ),
-  //               GestureDetector(
-  //                 onTap: () {
-  //                   showTimePicker(
-  //                     context: context,
-  //                     initialTime: TimeOfDay.now(),
-  //                   ).then((selectedTime) {
-  //                     if (selectedTime != null) {
-  //                       setState(() {
-  //                         // Convert selectedTime to AM/PM format
-  //                         String period =
-  //                             selectedTime.period == DayPeriod.am ? 'AM' : 'PM';
-  //                         // Extract hours and minutes
-  //                         int hours = selectedTime.hourOfPeriod;
-  //                         int minutes = selectedTime.minute;
-  //                         // Format the time as a string
-  //                         String formattedTime =
-  //                             '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')} $period';
-  //                         // Update the text field with the selected time
-  //                         endController.text = formattedTime;
-
-  //                         print(endController.text);
-  //                       });
-  //                     }
-  //                   });
-  //                 },
-  //                 child: Container(
-  //                   padding: const EdgeInsets.only(
-  //                     left: 10,
-  //                     right: 10,
-  //                   ),
-  //                   alignment: Alignment.centerLeft,
-  //                   height: 50,
-  //                   width: double.infinity,
-  //                   decoration: BoxDecoration(
-  //                     border: Border.all(
-  //                       color: Colors.grey,
-  //                       width: 1.0,
-  //                     ),
-  //                     borderRadius: BorderRadius.circular(15),
-  //                   ),
-  //                   child: Row(
-  //                     children: [
-  //                       Expanded(
-  //                         flex: 6,
-  //                         child: TextFormField(
-  //                           autofocus: false,
-  //                           readOnly: true,
-  //                           keyboardType: TextInputType.text,
-  //                           textCapitalization: TextCapitalization.sentences,
-  //                           decoration: InputDecoration(
-  //                             hintText: "When do you want to end?",
-  //                             hintStyle: textStyleGrey,
-  //                           ),
-  //                           validator: (v) {
-  //                             if (v == null || v.isEmpty) {
-  //                               return 'Opps, You need to fill this';
-  //                             } else {
-  //                               return null;
-  //                             }
-  //                           },
-  //                           controller: endController,
-  //                         ),
-  //                       ),
-  //                       const SizedBox(
-  //                         width: 5,
-  //                       ),
-  //                       const Expanded(
-  //                         flex: 2,
-  //                         child: Icon(
-  //                           Icons.access_time,
-  //                           color: Colors.grey,
-  //                         ),
-  //                       ),
-  //                     ],
-  //                   ),
-  //                 ),
-  //               ),
-  //             ],
-  //           ),
-  //         ),
-  //         actions: [
-  //           TextButton(
-  //             onPressed: () {
-  //               Navigator.of(context).pop();
-  //             },
-  //             child: const Text('Cancel'),
-  //           ),
-  //           TextButton(
-  //             onPressed: () {
-  //               if (_formKey.currentState != null &&
-  //                   !_formKey.currentState!.validate()) {
-  //                 ScaffoldMessenger.of(context).showSnackBar(
-  //                   const SnackBar(
-  //                     content: Text("Kindly complete all mandatory fields."),
-  //                   ),
-  //                 );
-  //                 FocusScope.of(context).unfocus();
-  //               } else {
-  //                 setState(() {
-  //                   scheduleList2[index] = AlgorithmSchedule(
-  //                     title: schedule.title,
-  //                     start: DateFormat('hh:mm a').parse(startController.text),
-  //                     end: DateFormat('hh:mm a').parse(endController.text),
-  //                     date: schedule.date,
-  //                     impt: schedule.impt,
-  //                     urgnt: schedule.urgnt,
-  //                   );
-  //                   scheduleAfter();
-  //                 });
-  //                 Navigator.of(context).pop();
-  //               }
-  //             },
-  //             child: Text('Save'),
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
@@ -1283,7 +1292,7 @@ class _ActivityCartState extends State<ActivityCart> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Activities Cart',
+          'Daftar Rencana Kegiatan',
           style: subHeaderStyleBold,
         ),
       ),
@@ -1307,7 +1316,7 @@ class _ActivityCartState extends State<ActivityCart> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(15)),
                         child: Text(
-                          "There is no activity yet",
+                          "Belum ada rencana kegiatan",
                           style: textStyleBold,
                         ),
                       )
@@ -1322,11 +1331,12 @@ class _ActivityCartState extends State<ActivityCart> {
                               return FutureBuilder<String>(
                                 future: catId != null
                                     ? getCategoryData(catId)
-                                    : Future.value('Not Decided'),
+                                    : Future.value('Tidak ada'),
                                 builder: (context, snapshot) => Row(
                                   children: [
                                     Container(
-                                      width: 350,
+                                      width: MediaQuery.of(context).size.width *
+                                          0.75,
                                       margin: const EdgeInsets.only(right: 5),
                                       alignment: Alignment.topLeft,
                                       padding: const EdgeInsets.all(10),
@@ -1522,14 +1532,18 @@ class _ActivityCartState extends State<ActivityCart> {
                                                                       .start,
                                                               children: [
                                                                 Text(
-                                                                  "Start",
+                                                                  "Waktu mulai",
                                                                   style:
                                                                       textStyleGrey,
                                                                 ),
                                                                 Text(
-                                                                  widget.temporaryAct[index]
-                                                                          .strTime ??
-                                                                      'Not Decided',
+                                                                  widget.temporaryAct[index].strTime !=
+                                                                          null
+                                                                      ? formattedTimes(widget
+                                                                              .temporaryAct[index]
+                                                                              .strTime!)
+                                                                          .toString()
+                                                                      : "Tidak ada",
                                                                   style:
                                                                       textStyleWhite,
                                                                 ),
@@ -1583,13 +1597,13 @@ class _ActivityCartState extends State<ActivityCart> {
                                                                       .start,
                                                               children: [
                                                                 Text(
-                                                                  "Category",
+                                                                  "Kategori",
                                                                   style:
                                                                       textStyleGrey,
                                                                 ),
                                                                 Text(
                                                                   snapshot.data ??
-                                                                      'Wait...',
+                                                                      'Tunggu...',
                                                                   style:
                                                                       textStyleWhite,
                                                                 ),
@@ -1644,12 +1658,12 @@ class _ActivityCartState extends State<ActivityCart> {
                                                                       .start,
                                                               children: [
                                                                 Text(
-                                                                  "Duration",
+                                                                  "Durasi",
                                                                   style:
                                                                       textStyleGrey,
                                                                 ),
                                                                 Text(
-                                                                  "${widget.temporaryAct[index].duration.toString()} minutes",
+                                                                  "${widget.temporaryAct[index].duration.toString()} menit",
                                                                   style:
                                                                       textStyleWhite,
                                                                 ),
@@ -1698,12 +1712,12 @@ class _ActivityCartState extends State<ActivityCart> {
                                                                       .start,
                                                               children: [
                                                                 Text(
-                                                                  "Total task",
+                                                                  "Total tugas",
                                                                   style:
                                                                       textStyleGrey,
                                                                 ),
                                                                 Text(
-                                                                  "${widget.temporaryAct[index].tasks?.length.toString() ?? 0} Tasks",
+                                                                  "${widget.temporaryAct[index].tasks?.length.toString() ?? 0} tugas",
                                                                   style:
                                                                       textStyleWhite,
                                                                 ),
@@ -1751,15 +1765,24 @@ class _ActivityCartState extends State<ActivityCart> {
                                                                       .start,
                                                               children: [
                                                                 Text(
-                                                                  "Repeat",
+                                                                  "Ulangi",
                                                                   style:
                                                                       textStyleGrey,
                                                                 ),
-                                                                Text(
-                                                                  "${widget.temporaryAct[index].rptIntv ?? 'Never'} ${widget.temporaryAct[index].rptDur ?? 0}X",
-                                                                  style:
-                                                                      textStyleWhite,
-                                                                ),
+                                                                widget.temporaryAct[index]
+                                                                            .rptIntv ==
+                                                                        "Tidak"
+                                                                    ? Text(
+                                                                        widget.temporaryAct[index].rptIntv ??
+                                                                            'Tidak',
+                                                                        style:
+                                                                            textStyleWhite,
+                                                                      )
+                                                                    : Text(
+                                                                        "${widget.temporaryAct[index].rptIntv ?? 'Tidak'} ${widget.temporaryAct[index].rptDur ?? 0}X",
+                                                                        style:
+                                                                            textStyleWhite,
+                                                                      ),
                                                               ],
                                                             ),
                                                           ),
@@ -1778,14 +1801,13 @@ class _ActivityCartState extends State<ActivityCart> {
                                             ),
                                             width: double.infinity,
                                             child: Text(
-                                              "Attachment Files",
+                                              "File kegiatan",
                                               style: textStyleBold,
                                             ),
                                           ),
                                           // Attachment Files - Content
                                           SizedBox(
                                             width: double.infinity,
-                                            //Listbuilder bellow
                                             child: widget.temporaryAct[index]
                                                         .files?.isEmpty ??
                                                     true
@@ -1803,7 +1825,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                                       color: Colors.grey[200],
                                                     ),
                                                     child: Text(
-                                                      "There are no files added",
+                                                      "Tidak ada file yang ditambahkan",
                                                       style: textStyle,
                                                       textAlign:
                                                           TextAlign.center,
@@ -1875,7 +1897,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                             ),
                                             width: double.infinity,
                                             child: Text(
-                                              "Tasks",
+                                              "Sub tugas",
                                               style: textStyleBold,
                                             ),
                                           ),
@@ -1898,7 +1920,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                                         .tasks?.isEmpty ??
                                                     true
                                                 ? Text(
-                                                    "There are no tasks added",
+                                                    "Tidak ada sub tugas yang ditambahkan",
                                                     style: textStyle,
                                                     textAlign: TextAlign.center,
                                                   )
@@ -1926,7 +1948,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                             ),
                                             width: double.infinity,
                                             child: Text(
-                                              "Locations",
+                                              "Lokasi",
                                               style: textStyleBold,
                                             ),
                                           ),
@@ -1951,7 +1973,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                                       color: Colors.grey[200],
                                                     ),
                                                     child: Text(
-                                                      "There are no locations added",
+                                                      "Tidak ada lokasi yang ditambahkan",
                                                       style: textStyle,
                                                       textAlign:
                                                           TextAlign.center,
@@ -2032,7 +2054,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                             ),
                                             width: double.infinity,
                                             child: Text(
-                                              "Notifications",
+                                              "Pengingat kegiatan",
                                               style: textStyleBold,
                                             ),
                                           ),
@@ -2055,7 +2077,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                                         .notif?.isEmpty ??
                                                     true
                                                 ? Text(
-                                                    "There are no reminder added",
+                                                    "Tidak ada pengingat waktu yang ditambahkan",
                                                     style: textStyle,
                                                     textAlign: TextAlign.center,
                                                   )
@@ -2067,7 +2089,7 @@ class _ActivityCartState extends State<ActivityCart> {
                                                             [])
                                                         .map((notif) {
                                                       return Text(
-                                                        "- Set a reminder ${notif.minute} minutes before",
+                                                        "- Pengingat waktu ${notif.minute} menit",
                                                         style: textStyle,
                                                         textAlign:
                                                             TextAlign.left,
@@ -2109,7 +2131,7 @@ class _ActivityCartState extends State<ActivityCart> {
                       },
                     ),
                     Text(
-                      'Set activity schedules using algorithms',
+                      'Gunakan algoritma rekomendasi jadwal',
                       style: textStyle,
                     ),
                   ],
@@ -2145,7 +2167,7 @@ class _ActivityCartState extends State<ActivityCart> {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        "Make a Schedule",
+                        "Buat Jadwal Kegiatan",
                         style: textStyleBoldWhite,
                       ),
                     ],

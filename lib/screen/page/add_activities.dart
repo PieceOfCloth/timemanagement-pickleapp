@@ -1,4 +1,8 @@
+// ignore_for_file: avoid_print, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:pickleapp/auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
@@ -16,11 +20,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pickleapp/screen/class/file.dart';
 import 'package:pickleapp/screen/class/task.dart';
 import 'package:pickleapp/theme.dart';
-import 'package:pickleapp/screen/components/input_file.dart';
 import 'package:pickleapp/screen/class/add_activity_list.dart';
 import 'package:pickleapp/screen/class/location.dart';
 import 'package:pickleapp/screen/class/notification.dart';
-import 'package:pickleapp/screen/class/timezone.dart';
 import 'package:pickleapp/screen/page/activity_cart.dart';
 
 class AddActivities extends StatefulWidget {
@@ -38,16 +40,28 @@ class _AddActivitiesState extends State<AddActivities> {
   String lat = "";
   String long = "";
 
+  Future<void> _requestLocationPermission() async {
+    PermissionStatus permission = await Permission.location.request();
+    if (permission.isGranted) {
+      // Permission granted
+    } else {
+      // Permission denied
+    }
+  }
+
   final GlobalKey _tooltipTasks = GlobalKey();
   final GlobalKey _tooltipCategory = GlobalKey();
   final GlobalKey _tooltipDuration = GlobalKey();
   final GlobalKey _tooltipRepDuration = GlobalKey();
   final GlobalKey _tooltipNotif = GlobalKey();
   final GlobalKey _tooltipLoc = GlobalKey();
+  final GlobalKey _tooltipFile = GlobalKey();
+  final GlobalKey _tooltipFixed = GlobalKey();
 
   final _formKey = GlobalKey<FormState>();
   final logger = Logger();
 
+  bool _isFixed = false;
   bool _isContentAddCategoryVisible = false;
   bool _isContentInputOptionalVisible = false;
   bool _isContentListOfFilesVisible = false;
@@ -57,7 +71,6 @@ class _AddActivitiesState extends State<AddActivities> {
   Color currentColor = const Color.fromARGB(255, 3, 0, 66);
 
   List<String> cS = [];
-  List<Timezones> tS = [];
   List<Files> files = [];
   List<Tasks> taskList = [];
   List<Notifications> notificationList = [];
@@ -82,7 +95,8 @@ class _AddActivitiesState extends State<AddActivities> {
   String? important;
   String? urgent;
   String? catID;
-  String? rptFreq = "Never";
+  String? catTemp;
+  String? rptFreq = "Tidak";
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
@@ -92,46 +106,6 @@ class _AddActivitiesState extends State<AddActivities> {
     colorR.text = int.parse(hexColor.substring(2, 4), radix: 16).toString();
     colorG.text = int.parse(hexColor.substring(4, 6), radix: 16).toString();
     colorB.text = int.parse(hexColor.substring(6, 8), radix: 16).toString();
-  }
-
-  /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
-
-  // Show theory infographic in a alertdialog
-  void _showInfoDialogPriority(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            "Importance and Urgency Info",
-            style: subHeaderStyleBold,
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: InteractiveViewer(
-              boundaryMargin: const EdgeInsets.all(20),
-              minScale: 0.1,
-              maxScale: 5.0,
-              child: Image.asset(
-                'assets/Pickle Infographic.jpg',
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(
-                "Close",
-                style: textStyleBold,
-              ),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
@@ -149,7 +123,6 @@ class _AddActivitiesState extends State<AddActivities> {
 
     setState(() {
       taskList = newTasks;
-      // ignore: avoid_print
       print('Tasks: $taskList');
     });
   }
@@ -168,8 +141,7 @@ class _AddActivitiesState extends State<AddActivities> {
 
     setState(() {
       notificationList = newNotifications;
-      // ignore: avoid_print
-      print('Notification in a minutes before: $notificationList');
+      print('Notifikasi: $notificationList');
     });
   }
 
@@ -182,7 +154,6 @@ class _AddActivitiesState extends State<AddActivities> {
         latitude: double.parse(latitude),
         longitude: double.parse(longitude),
       ));
-      // ignore: avoid_print
       print('Locations: $locations');
     });
   }
@@ -199,7 +170,7 @@ class _AddActivitiesState extends State<AddActivities> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {
-      throw 'Could not launch $url';
+      throw 'Tidak bisa meluncurkan: $url';
     }
   }
 
@@ -234,7 +205,6 @@ class _AddActivitiesState extends State<AddActivities> {
           name: platformFile.name,
           path: platformFile.path!,
         ));
-        // ignore: avoid_print
         print('Files: $files');
       });
     }
@@ -253,17 +223,33 @@ class _AddActivitiesState extends State<AddActivities> {
     });
   }
 
+  // Change format time to hh:mm PM/AM
+  DateTime formattedActivityTimeOnly(String inptTime) {
+    DateTime formattedTime = DateFormat("hh:mm a").parse(inptTime);
+
+    return formattedTime;
+  }
+
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
   // Add activity to temporary list of activities
   void addActivity() {
+    DateTime tanggal = DateFormat("yyyy-MM-dd").parse(calendarDate.text);
+
+    DateTime waktuMulai = DateTime(
+      tanggal.year,
+      tanggal.month,
+      tanggal.day,
+      formattedActivityTimeOnly(startTime.text).hour,
+      formattedActivityTimeOnly(startTime.text).minute,
+    );
     AddActivityList newActivityList = AddActivityList(
       userID: userID,
       title: actTitle.text,
       impType: important,
       urgType: urgent,
       date: calendarDate.text,
-      strTime: startTime.text == "" ? null : startTime.text,
+      strTime: waktuMulai,
       duration: int.parse(duration.text),
       tasks: taskList.isEmpty ? [] : taskList,
       cat: catID,
@@ -272,11 +258,11 @@ class _AddActivitiesState extends State<AddActivities> {
       notif: notificationList.isEmpty ? [] : notificationList,
       locations: locations.isEmpty ? [] : locations,
       files: files.isEmpty ? [] : files,
+      isFixed: _isFixed,
     );
 
     setState(() {
       temporaryAct.add(newActivityList);
-      // ignore: avoid_print
       print('Temp Act: $temporaryAct');
 
       // Sort the temporaryAct list by date and start time
@@ -287,7 +273,7 @@ class _AddActivitiesState extends State<AddActivities> {
           return dateComparison;
         }
         // If dates are the same, compare start times
-        return (a.strTime ?? '').compareTo(b.strTime ?? '');
+        return (a.strTime!).compareTo(b.strTime!);
       });
 
       // Delete the input form field value
@@ -299,8 +285,7 @@ class _AddActivitiesState extends State<AddActivities> {
       duration.clear();
       taskList = [];
       tasks.clear();
-      catID = null;
-      rptFreq = "Never";
+      rptFreq = "Tidak";
       rptDur.clear();
       notificationList = [];
       notif.clear();
@@ -311,51 +296,22 @@ class _AddActivitiesState extends State<AddActivities> {
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
 
-  // For determine priority high medium or so on
-  String getPriority(important, urgent) {
-    if (important == "Important" && urgent == "Urgent") {
-      return "Golf (Critical Priority)";
-    } else if (important == "Important" && urgent == "Not Urgent") {
-      return "Pebble (High Priority)";
-    } else if (important == "Not Important" && urgent == "Urgent") {
-      return "Sand (Medium Priority)";
-    } else {
-      return "Water (Low Priority)";
-    }
-  }
-
-  // Get priority color based on important und urgent level
-  Color getPriorityColor(important, urgent) {
-    if (important == "Important" && urgent == "Urgent") {
-      return Colors.red[600] ?? Colors.red;
-    } else if (important == "Important" && urgent == "Not Urgent") {
-      return Colors.yellow[600] ?? Colors.yellow;
-    } else if (important == "Not Important" && urgent == "Urgent") {
-      return Colors.green[600] ?? Colors.green;
-    } else {
-      return Colors.blue[600] ?? Colors.blue;
-    }
-  }
-
-  /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
-
   // Create New Category
   Future<void> createNewCategory() async {
     try {
       // Menambahkan aktivitas baru ke koleksi "activities" dengan referensi ke UID pengguna
-      await FirebaseFirestore.instance.collection('categories').add({
-        'title': newCat.text,
-        'color_a': int.parse(colorA.text),
-        'color_r': int.parse(colorR.text),
-        'color_g': int.parse(colorG.text),
-        'color_b': int.parse(colorB.text),
-        'userId': userID, // Referensi ke UID pengguna
+      await FirebaseFirestore.instance.collection('kategoris').add({
+        'nama': newCat.text,
+        'warna_a': int.parse(colorA.text),
+        'warna_r': int.parse(colorR.text),
+        'warna_g': int.parse(colorG.text),
+        'warna_b': int.parse(colorB.text),
+        'users_id': userID, // Referensi ke UID pengguna
       });
 
-      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("A new category is successfully added"),
+          content: Text("Kategori baru berhasil ditambahkan"),
         ),
       );
 
@@ -363,27 +319,98 @@ class _AddActivitiesState extends State<AddActivities> {
         newCat.clear();
       });
     } catch (e) {
-      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Failed to add data: $e"),
+          content: Text("Gagal untuk menambahkan data: $e"),
         ),
       );
     }
   }
 
+  void showPickleJarInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext ctxt) {
+        return AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  'Teori Pickle Jar - Pemilihan Prioritas',
+                  style: subHeaderStyleBold,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  Navigator.of(ctxt).pop();
+                },
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '1. Bola Golf (Prioritas Utama):',
+                  style: textStyleBold,
+                ),
+                Text(
+                  'Kegiatan yang penting dan mendesak.',
+                  style: textStyle,
+                ),
+                const SizedBox(height: 8.0),
+                Text(
+                  '2. Kerikil (Prioritas Tinggi):',
+                  style: textStyleBold,
+                ),
+                Text(
+                  'Kegiatan yang penting tapi tidak mendesak.',
+                  style: textStyle,
+                ),
+                const SizedBox(height: 8.0),
+                Text(
+                  '3. Pasir (Prioritas Sedang):',
+                  style: textStyleBold,
+                ),
+                Text(
+                  'Kegiatan yang tidak penting tapi mendesak.',
+                  style: textStyle,
+                ),
+                const SizedBox(height: 8.0),
+                Text(
+                  '4. Air (Prioritas Rendah):',
+                  style: textStyleBold,
+                ),
+                Text(
+                  'Kegiatan yang tidak penting dan tidak mendesak.',
+                  style: textStyle,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   // Read Category Data
   Future<void> getCategoryData() async {
     QuerySnapshot data = await FirebaseFirestore.instance
-        .collection('categories')
-        .where('userId', isEqualTo: userID)
+        .collection('kategoris')
+        .where('users_id', isEqualTo: userID)
         .get();
 
     List<DropdownMenuItem<String>> items = [];
 
     for (var element in data.docs) {
-      String catTitle = element['title'];
+      String catTitle = element['nama'];
       String categoryID = element.id;
+      if (element['nama'] == "Lainnya") {
+        catID = element.id;
+      }
 
       items.add(DropdownMenuItem(
         value: categoryID,
@@ -404,9 +431,9 @@ class _AddActivitiesState extends State<AddActivities> {
   @override
   void initState() {
     super.initState();
+    getCategoryData();
     setState(() {});
     // bacaData();
-    getCategoryData();
   }
 
   /* ------------------------------------------------------------------------------------------------------------------------------------------------------------ */
@@ -424,7 +451,7 @@ class _AddActivitiesState extends State<AddActivities> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            'Add Activities',
+            'Tambah Kegiatan',
             style: subHeaderStyleBold,
           ),
           actions: [
@@ -463,401 +490,378 @@ class _AddActivitiesState extends State<AddActivities> {
             ),
           ],
         ),
-        body: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Container(
-              margin: const EdgeInsets.all(20),
-              alignment: Alignment.center,
-              child: Column(
-                children: [
-                  // Activity Title Input
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        body: SafeArea(
+          child: LayoutBuilder(builder: (context, constraints) {
+            return Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  alignment: Alignment.center,
+                  child: Column(
                     children: [
-                      Text(
-                        "Activity Title",
-                        style: textStyle,
-                      ),
-                      const SizedBox(
-                        height: 5,
-                      ),
-                      Container(
-                        padding: const EdgeInsets.only(
-                          left: 10,
-                          right: 10,
-                        ),
-                        alignment: Alignment.centerLeft,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: Colors.grey,
-                            width: 1.0,
-                          ),
-                        ),
-                        child: TextFormField(
-                          autofocus: false,
-                          keyboardType: TextInputType.text,
-                          textCapitalization: TextCapitalization.words,
-                          // style: textStyle,
-                          decoration: InputDecoration(
-                            hintText: "Enter your activity title here",
-                            hintStyle: textStyleGrey,
-                          ),
-                          validator: (v) {
-                            if (v == null || v.isEmpty) {
-                              return 'Opps, You need to fill this';
-                            } else {
-                              return null;
-                            }
-                          },
-                          controller: actTitle,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(
-                    height: 5,
-                  ),
-                  // Activity Important n Urgent Types
-                  Row(
-                    children: [
-                      // Important
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                      // Activity Title Input
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 7,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  flex: 6,
-                                  child: Text(
-                                    "Importance",
-                                    style: textStyle,
-                                  ),
+                                Text(
+                                  "Nama kegiatan",
+                                  style: textStyle,
                                 ),
                                 const SizedBox(
-                                  width: 5,
+                                  height: 5,
                                 ),
-                                Expanded(
-                                  flex: 2,
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      _showInfoDialogPriority(context);
-                                    },
-                                    child: const Icon(
-                                      Icons.info,
-                                      color: Colors.black,
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                    left: 10,
+                                    right: 10,
+                                  ),
+                                  alignment: Alignment.centerLeft,
+                                  width: constraints.maxWidth,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: Colors.grey,
+                                      width: 1.0,
                                     ),
+                                  ),
+                                  child: TextFormField(
+                                    autofocus: false,
+                                    keyboardType: TextInputType.text,
+                                    textCapitalization:
+                                        TextCapitalization.words,
+                                    // style: textStyle,
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          "Masukkan nama kegiatan kamu disini",
+                                      hintStyle: textStyleGrey,
+                                    ),
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty) {
+                                        return 'Silahkan isi nama kegiatanmu';
+                                      } else {
+                                        return null;
+                                      }
+                                    },
+                                    controller: actTitle,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.only(
-                                left: 10,
-                                right: 10,
-                              ),
-                              alignment: Alignment.centerLeft,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Colors.grey,
-                                  width: 1.0,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: DropdownButtonFormField(
-                                isExpanded: true,
-                                value: important,
-                                hint: Text(
-                                  "Choose one only",
-                                  style: textStyleGrey,
-                                ),
-                                items: [
-                                  DropdownMenuItem(
-                                    value: "Important",
-                                    child: Text(
-                                      "Important",
-                                      style: textStyle,
-                                    ),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: "Not Important",
-                                    child: Text(
-                                      "Not Important",
-                                      style: textStyle,
-                                    ),
-                                  ),
-                                ],
-                                onChanged: (String? v) {
-                                  setState(() {
-                                    important = v;
-                                    // ignore: avoid_print
-                                    print(important);
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null) {
-                                    return 'Oops, please select an option :)';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(
-                        width: 5,
-                      ),
-                      // Urgent
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  flex: 6,
-                                  child: Text(
-                                    "Urgency",
-                                    style: textStyle,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Expanded(
-                                  flex: 2,
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      _showInfoDialogPriority(context);
-                                    },
-                                    child: const Icon(
-                                      Icons.info,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.only(
-                                left: 10,
-                                right: 10,
-                              ),
-                              alignment: Alignment.centerLeft,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Colors.grey,
-                                  width: 1.0,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: DropdownButtonFormField(
-                                isExpanded: true,
-                                value: urgent,
-                                hint: Text(
-                                  "Choose one only",
-                                  style: textStyleGrey,
-                                ),
-                                items: [
-                                  DropdownMenuItem(
-                                    value: "Urgent",
-                                    child: Text(
-                                      "Urgent",
-                                      style: textStyle,
-                                    ),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: "Not Urgent",
-                                    child: Text(
-                                      "Not Urgent",
-                                      style: textStyle,
-                                    ),
-                                  ),
-                                ],
-                                onChanged: (String? v) {
-                                  setState(() {
-                                    urgent = v;
-                                    // ignore: avoid_print
-                                    print(urgent);
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null) {
-                                    return 'Oops, please select an option :)';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(
-                    height: 5,
-                  ),
-                  // Date
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Date",
-                        style: textStyle,
-                      ),
-                      const SizedBox(
-                        height: 5,
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.now(),
-                                  firstDate: DateTime(2024),
-                                  lastDate: DateTime(2100))
-                              .then((value) {
-                            setState(() {
-                              Timestamp date = Timestamp.fromDate(DateTime(
-                                value!.year,
-                                value.month,
-                                value.day,
-                              ));
-                              calendarDate.text =
-                                  date.toDate().toString().substring(0, 10);
-                              // ignore: avoid_print
-                              print(calendarDate.text);
-                            });
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.only(
-                            left: 10,
-                            right: 10,
-                          ),
-                          alignment: Alignment.centerLeft,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: Colors.grey,
-                              width: 1.0,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 6,
-                                child: TextFormField(
-                                  autofocus: false,
-                                  readOnly: true,
-                                  keyboardType: TextInputType.text,
-                                  textCapitalization:
-                                      TextCapitalization.sentences,
-                                  decoration: InputDecoration(
-                                    hintText: "Choose your date",
-                                    hintStyle: textStyleGrey,
-                                  ),
-                                  validator: (v) {
-                                    if (v == null || v.isEmpty) {
-                                      return 'Opps, You need to fill this';
-                                    } else {
-                                      return null;
-                                    }
-                                  },
-                                  controller: calendarDate,
-                                ),
-                              ),
-                              const SizedBox(
-                                width: 5,
-                              ),
-                              const Expanded(
-                                flex: 2,
-                                child: Icon(
-                                  Icons.calendar_month_rounded,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(
-                    height: 5,
-                  ),
-                  // Start time n Duration
-                  Row(
-                    children: [
-                      // Start time
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Start Time",
-                              style: textStyle,
-                            ),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                showTimePicker(
-                                  context: context,
-                                  initialTime: TimeOfDay.now(),
-                                ).then((selectedTime) {
-                                  if (selectedTime != null) {
-                                    setState(() {
-                                      // Convert selectedTime to AM/PM format
-                                      String period =
-                                          selectedTime.period == DayPeriod.am
-                                              ? 'AM'
-                                              : 'PM';
-                                      // Extract hours and minutes
-                                      int hours = selectedTime.hourOfPeriod;
-                                      int minutes = selectedTime.minute;
-                                      // Format the time as a string
-                                      String formattedTime =
-                                          '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')} $period';
-                                      // Update the text field with the selected time
-                                      startTime.text = formattedTime;
-                                      // ignore: avoid_print
-                                      print(startTime.text);
-                                    });
-                                  }
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                ),
-                                alignment: Alignment.centerLeft,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey,
-                                    width: 1.0,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
+                                Row(
                                   children: [
                                     Expanded(
                                       flex: 6,
+                                      child: Text(
+                                        "Fix?",
+                                        style: textStyle,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Tooltip(
+                                        key: _tooltipFixed,
+                                        margin: const EdgeInsets.only(
+                                          left: 80,
+                                          right: 20,
+                                        ),
+                                        message:
+                                            "Waktu pada kegiatan yang fix tidak berdampak atau berubah ketika ada perubahan pada jadwal kegiatan lain.",
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            final dynamic tooltip =
+                                                _tooltipFixed.currentState;
+                                            tooltip.ensureTooltipVisible();
+                                          },
+                                          child: const Icon(
+                                            Icons.info,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 5,
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                    left: 10,
+                                    right: 10,
+                                  ),
+                                  alignment: Alignment.center,
+                                  width: constraints.maxWidth,
+                                  child: Checkbox(
+                                    value: _isFixed,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _isFixed = value!;
+                                        print(_isFixed);
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      // Activity Important n Urgent Types
+                      Row(
+                        children: [
+                          // Important
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 6,
+                                      child: Text(
+                                        "Kepentingan",
+                                        style: textStyle,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          showPickleJarInfo(context);
+                                        },
+                                        child: const Icon(
+                                          Icons.info,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 5,
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                    left: 10,
+                                    right: 10,
+                                  ),
+                                  alignment: Alignment.centerLeft,
+                                  width: constraints.maxWidth,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey,
+                                      width: 1.0,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: DropdownButtonFormField(
+                                    isExpanded: true,
+                                    value: important,
+                                    hint: Text(
+                                      "Pilih salah satu",
+                                      style: textStyleGrey,
+                                    ),
+                                    items: [
+                                      DropdownMenuItem(
+                                        value: "Penting",
+                                        child: Text(
+                                          "Penting",
+                                          style: textStyle,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: "Tidak Penting",
+                                        child: Text(
+                                          "Tidak Penting",
+                                          style: textStyle,
+                                        ),
+                                      ),
+                                    ],
+                                    onChanged: (String? v) {
+                                      setState(() {
+                                        important = v;
+                                        print(important);
+                                      });
+                                    },
+                                    validator: (value) {
+                                      if (value == null) {
+                                        return 'Silahkan pilih salah satu';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(
+                            width: 5,
+                          ),
+                          // Urgent
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 6,
+                                      child: Text(
+                                        "Mendesak",
+                                        style: textStyle,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          showPickleJarInfo(context);
+                                        },
+                                        child: const Icon(
+                                          Icons.info,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 5,
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                    left: 10,
+                                    right: 10,
+                                  ),
+                                  alignment: Alignment.centerLeft,
+                                  width: constraints.maxWidth,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey,
+                                      width: 1.0,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: DropdownButtonFormField(
+                                    isExpanded: true,
+                                    value: urgent,
+                                    hint: Text(
+                                      "Pilih salah satu",
+                                      style: textStyleGrey,
+                                    ),
+                                    items: [
+                                      DropdownMenuItem(
+                                        value: "Mendesak",
+                                        child: Text(
+                                          "Mendesak",
+                                          style: textStyle,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: "Tidak Mendesak",
+                                        child: Text(
+                                          "Tidak Mendesak",
+                                          style: textStyle,
+                                        ),
+                                      ),
+                                    ],
+                                    onChanged: (String? v) {
+                                      setState(() {
+                                        urgent = v;
+                                        print(urgent);
+                                      });
+                                    },
+                                    validator: (value) {
+                                      if (value == null) {
+                                        return 'Silahkan pilih salah satu.';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      // Date
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Tanggal",
+                            style: textStyle,
+                          ),
+                          const SizedBox(
+                            height: 5,
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              showDatePicker(
+                                      locale: const Locale("id", "ID"),
+                                      context: context,
+                                      initialDate: DateTime.now(),
+                                      firstDate: DateTime(2024),
+                                      lastDate: DateTime(2100))
+                                  .then((value) {
+                                setState(() {
+                                  Timestamp date = Timestamp.fromDate(DateTime(
+                                    value!.year,
+                                    value.month,
+                                    value.day,
+                                  ));
+                                  calendarDate.text =
+                                      date.toDate().toString().substring(0, 10);
+                                  print(calendarDate.text);
+                                });
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.only(
+                                left: 10,
+                                right: 10,
+                              ),
+                              alignment: Alignment.centerLeft,
+                              width: constraints.maxWidth,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Colors.grey,
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 6,
+                                    child: AbsorbPointer(
                                       child: TextFormField(
                                         autofocus: false,
                                         readOnly: true,
@@ -865,1248 +869,1542 @@ class _AddActivitiesState extends State<AddActivities> {
                                         textCapitalization:
                                             TextCapitalization.sentences,
                                         decoration: InputDecoration(
-                                          hintText:
-                                              "When do you want to start?",
+                                          hintText: "Pilih tanggal Kegiatanmu",
                                           hintStyle: textStyleGrey,
                                         ),
-                                        // validator: (v) {
-                                        //   if (v == null || v.isEmpty) {
-                                        //     return 'Opps, You need to fill this';
-                                        //   } else {
-                                        //     return null;
-                                        //   }
-                                        // },
-                                        controller: startTime,
+                                        validator: (v) {
+                                          if (v == null || v.isEmpty) {
+                                            return 'Silahkan isi tanggal kegiatan';
+                                          } else {
+                                            return null;
+                                          }
+                                        },
+                                        controller: calendarDate,
                                       ),
-                                    ),
-                                    const SizedBox(
-                                      width: 5,
-                                    ),
-                                    const Expanded(
-                                      flex: 2,
-                                      child: Icon(
-                                        Icons.access_time,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(
-                        width: 5,
-                      ),
-                      // Duration
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 6,
-                                  child: Text(
-                                    "Duration",
-                                    style: textStyle,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                //Tambah informasi (input in a minute)
-                                Expanded(
-                                  flex: 2,
-                                  child: Tooltip(
-                                    key: _tooltipDuration,
-                                    margin: const EdgeInsets.only(
-                                      left: 80,
-                                      right: 20,
-                                    ),
-                                    message:
-                                        "Please enter the duration in minutes (E.g. input '13' means for 13 minutes)",
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        final dynamic tooltip =
-                                            _tooltipDuration.currentState;
-                                        tooltip.ensureTooltipVisible();
-                                      },
-                                      child: const Icon(
-                                        Icons.info,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.only(
-                                left: 10,
-                                right: 10,
-                              ),
-                              alignment: Alignment.centerLeft,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Colors.grey,
-                                  width: 1.0,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    flex: 6,
-                                    child: TextFormField(
-                                      autofocus: false,
-                                      keyboardType: const TextInputType
-                                          .numberWithOptions(),
-                                      inputFormatters: <TextInputFormatter>[
-                                        FilteringTextInputFormatter.allow(
-                                            RegExp(r'[0-9]')),
-                                      ],
-                                      decoration: InputDecoration(
-                                        hintText:
-                                            "Enter your duration plan (in a minutes)",
-                                        hintStyle: textStyleGrey,
-                                      ),
-                                      validator: (v) {
-                                        if (v == null || v.isEmpty) {
-                                          return 'Opps, You need to fill this';
-                                        } else {
-                                          return null;
-                                        }
-                                      },
-                                      controller: duration,
-                                      onChanged: (v) {
-                                        // ignore: avoid_print
-                                        print(duration.text);
-                                      },
                                     ),
                                   ),
                                   const SizedBox(
-                                    height: 5,
+                                    width: 5,
                                   ),
                                   const Expanded(
                                     flex: 2,
                                     child: Icon(
-                                      Icons.timer_outlined,
+                                      Icons.calendar_month_rounded,
                                       color: Colors.grey,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(
-                    height: 5,
-                  ),
-                  // Input optional
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isContentInputOptionalVisible =
-                            !_isContentInputOptionalVisible;
-                      });
-                    },
-                    child: Container(
-                      alignment: Alignment.center,
-                      width: double.infinity,
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Divider(
-                              color: Colors.grey,
-                              height: 36,
-                              thickness: 1,
-                            ),
-                          ),
-                          const SizedBox(
-                            width: 5,
-                          ),
-                          Text(
-                            "Input Optional",
-                            style: textStyleGrey,
-                          ),
-                          const SizedBox(
-                            width: 5,
-                          ),
-                          const Expanded(
-                            child: Divider(
-                              color: Colors.grey,
-                              height: 36,
-                              thickness: 1,
-                            ),
-                          ),
-                          const SizedBox(
-                            width: 5,
-                          ),
-                          Icon(
-                            _isContentInputOptionalVisible
-                                ? Icons.keyboard_arrow_down_rounded
-                                : Icons.keyboard_arrow_up_rounded,
-                            color: Colors.grey,
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(
-                    height: 5,
-                  ),
-                  // Input optional - content
-                  Visibility(
-                    visible: _isContentInputOptionalVisible,
-                    child: Column(
-                      children: [
-                        // Tasks Input
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      // Start time n Duration
+                      Row(
+                        children: [
+                          // Start time
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  flex: 6,
-                                  child: Text(
-                                    "Tasks",
-                                    style: textStyle,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                // Information = if user have more than 1 task user delimeter please like (,)
-                                Expanded(
-                                  flex: 2,
-                                  child: Tooltip(
-                                    key: _tooltipTasks,
-                                    margin: const EdgeInsets.only(
-                                      left: 40,
-                                      right: 20,
-                                    ),
-                                    message:
-                                        "If you want to enter more than one task. please use the comma (,) separator (E.g. buying eggs, breaking eggs)",
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        final dynamic tooltip =
-                                            _tooltipTasks.currentState;
-                                        tooltip.ensureTooltipVisible();
-                                      },
-                                      child: const Icon(
-                                        Icons.info,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.only(
-                                left: 10,
-                                right: 10,
-                              ),
-                              alignment: Alignment.centerLeft,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Colors.grey,
-                                  width: 1.0,
-                                ),
-                              ),
-                              child: TextFormField(
-                                autofocus: false,
-                                keyboardType: TextInputType.text,
-                                textCapitalization:
-                                    TextCapitalization.sentences,
-                                decoration: InputDecoration(
-                                  hintText: "Enter your tasks if you have",
-                                  hintStyle: textStyleGrey,
-                                ),
-                                onChanged: (value) {
-                                  addTask(value, _isCheckedTaskStatus);
-                                },
-                                controller: tasks,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        // Combo Category
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 6,
-                                  child: Text(
-                                    "Category",
-                                    style: textStyle,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Expanded(
-                                  flex: 2,
-                                  child: Tooltip(
-                                    key: _tooltipCategory,
-                                    margin: const EdgeInsets.only(
-                                      left: 80,
-                                      right: 20,
-                                    ),
-                                    message:
-                                        "Please enter your activity into the category you want (E.g. Sprots or College Activities)",
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        final dynamic tooltip =
-                                            _tooltipCategory.currentState;
-                                        tooltip.ensureTooltipVisible();
-                                      },
-                                      child: const Icon(
-                                        Icons.info,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.only(
-                                left: 10,
-                                right: 10,
-                              ),
-                              alignment: Alignment.centerLeft,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Colors.grey,
-                                  width: 1.0,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: DropdownButton(
-                                isExpanded: true,
-                                value: catID,
-                                hint: Text(
-                                  "Choose any category that fit to your activity",
-                                  style: textStyleGrey,
-                                ),
-                                items: dropdownCat,
-                                onChanged: (v) {
-                                  setState(() {
-                                    catID = v;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        // Add Activity Category and Color - Title (Hide n show)
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _isContentAddCategoryVisible =
-                                  !_isContentAddCategoryVisible;
-                            });
-                          },
-                          child: Container(
-                            alignment: Alignment.centerRight,
-                            width: double.infinity,
-                            child: Row(
-                              children: [
-                                const Expanded(
-                                  child: Divider(
-                                    color: Colors.grey,
-                                    height: 36,
-                                    thickness: 1,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
                                 Text(
-                                  "Didn't find any category?",
-                                  style: textStyleGrey,
-                                ),
-                                Text(
-                                  " Add a new one",
+                                  "Waktu mulai",
                                   style: textStyle,
                                 ),
                                 const SizedBox(
-                                  width: 5,
+                                  height: 5,
                                 ),
-                                const Expanded(
-                                  child: Divider(
-                                    color: Colors.grey,
-                                    height: 36,
-                                    thickness: 1,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Icon(
-                                  _isContentAddCategoryVisible
-                                      ? Icons.keyboard_arrow_down_rounded
-                                      : Icons.keyboard_arrow_up_rounded,
-                                  color: Colors.grey,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        // Add Activity Category and Color - Content (Hide n show)
-                        Visibility(
-                          visible: _isContentAddCategoryVisible,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: GestureDetector(
-                                  onTap: () async {
-                                    Color selectedColor = await showDialog(
+                                GestureDetector(
+                                  onTap: () {
+                                    showTimePicker(
                                       context: context,
-                                      builder: (BuildContext context) {
-                                        return AlertDialog(
-                                          title: Text(
-                                            'Pick a color',
-                                            style: subHeaderStyleBold,
-                                          ),
-                                          content: SingleChildScrollView(
-                                            child: ColorPicker(
-                                              color: currentColor,
-                                              onColorChanged: (Color color) {
-                                                setState(
-                                                    () => currentColor = color);
-                                              },
-                                              width: 50,
-                                              height: 100,
-                                              borderRadius: 10,
-                                              heading: Text(
-                                                'Select color',
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .headlineSmall,
-                                              ),
-                                              pickersEnabled: const <ColorPickerType,
-                                                  bool>{
-                                                ColorPickerType.both: false,
-                                                ColorPickerType.primary: true,
-                                                ColorPickerType.accent: false,
-                                                ColorPickerType.bw: false,
-                                                ColorPickerType.custom: false,
-                                                ColorPickerType.wheel: false,
-                                              },
-                                            ),
-                                          ),
-                                          actions: <Widget>[
-                                            GestureDetector(
-                                              onTap: () {
-                                                Navigator.of(context)
-                                                    .pop(currentColor);
-                                              },
-                                              child: Container(
-                                                alignment: Alignment.center,
-                                                width: double.infinity,
-                                                decoration: BoxDecoration(
-                                                  borderRadius:
-                                                      BorderRadius.circular(15),
-                                                  color: const Color.fromARGB(
-                                                      255, 3, 0, 66),
-                                                ),
-                                                child: Text(
-                                                  'Done',
-                                                  style: textStyleBoldWhite,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    );
-
-                                    // ignore: unnecessary_null_comparison
-                                    if (selectedColor != null) {
-                                      setState(
-                                          () => currentColor = selectedColor);
-                                      String argbCode = ColorTools.colorCode(
-                                        currentColor,
-                                      );
-                                      colorToARGB(argbCode);
-                                      // ignore: avoid_print
-                                      print(
-                                          'ARGB Code: (${colorA.text}, ${colorR.text}, ${colorG.text}, ${colorB.text})');
-                                    }
+                                      initialTime: TimeOfDay.now(),
+                                    ).then((selectedTime) {
+                                      if (selectedTime != null) {
+                                        setState(() {
+                                          // Convert selectedTime to AM/PM format
+                                          String period = selectedTime.period ==
+                                                  DayPeriod.am
+                                              ? 'AM'
+                                              : 'PM';
+                                          // Extract hours and minutes
+                                          int hours = selectedTime.hourOfPeriod;
+                                          int minutes = selectedTime.minute;
+                                          // Format the time as a string
+                                          String formattedTime =
+                                              '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')} $period';
+                                          // Update the text field with the selected time
+                                          startTime.text = formattedTime;
+                                        });
+                                      }
+                                    });
                                   },
                                   child: Container(
-                                    width: 30,
-                                    height: 30,
+                                    padding: const EdgeInsets.only(
+                                      left: 10,
+                                      right: 10,
+                                    ),
+                                    alignment: Alignment.centerLeft,
+                                    width: constraints.maxWidth,
                                     decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
                                       border: Border.all(
                                         color: Colors.grey,
-                                        width: 1,
+                                        width: 1.0,
                                       ),
-                                      color: currentColor,
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 8,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Category",
-                                      style: textStyle,
-                                    ),
-                                    const SizedBox(
-                                      height: 5,
-                                    ),
-                                    Row(
+                                    child: Row(
                                       children: [
                                         Expanded(
                                           flex: 6,
-                                          child: Container(
-                                            padding: const EdgeInsets.only(
-                                              left: 10,
-                                              right: 10,
-                                            ),
-                                            alignment: Alignment.centerLeft,
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              border: Border.all(
-                                                color: Colors.grey,
-                                                width: 1.0,
-                                              ),
-                                            ),
+                                          child: AbsorbPointer(
                                             child: TextFormField(
                                               autofocus: false,
+                                              readOnly: true,
                                               keyboardType: TextInputType.text,
                                               textCapitalization:
                                                   TextCapitalization.sentences,
                                               decoration: InputDecoration(
-                                                hintText:
-                                                    "Enter your new category (eg: sports, studies, etc)",
+                                                hintText: "Pilih waktu mulai",
                                                 hintStyle: textStyleGrey,
                                               ),
-                                              controller: newCat,
+                                              controller: startTime,
+                                              validator: (value) {
+                                                if (value == null &&
+                                                    _isFixed == true) {
+                                                  return "Silahkan isi ini";
+                                                } else {
+                                                  return null;
+                                                }
+                                              },
                                             ),
                                           ),
                                         ),
                                         const SizedBox(
                                           width: 5,
                                         ),
-                                        Expanded(
+                                        const Expanded(
                                           flex: 2,
-                                          child: GestureDetector(
-                                            onTap: () {
-                                              if (newCat.text == "") {
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(const SnackBar(
-                                                        content: Text(
-                                                            'Please fill the category name :)')));
-                                              } else {
-                                                createNewCategory();
-                                                getCategoryData();
-                                              }
-                                            },
-                                            child: Container(
-                                              alignment: Alignment.center,
-                                              width: double.infinity,
-                                              height: 50,
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(15),
-                                                color: const Color.fromARGB(
-                                                    255, 3, 0, 66),
-                                              ),
-                                              child: Text(
-                                                'Add',
-                                                style: textStyleBoldWhite,
-                                              ),
-                                            ),
+                                          child: Icon(
+                                            Icons.access_time,
+                                            color: Colors.grey,
                                           ),
                                         ),
                                       ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(
+                            width: 5,
+                          ),
+                          // Duration
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 6,
+                                      child: Text(
+                                        "Durasi",
+                                        style: textStyle,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    //Tambah informasi (input in a minute)
+                                    Expanded(
+                                      flex: 2,
+                                      child: Tooltip(
+                                        key: _tooltipDuration,
+                                        margin: const EdgeInsets.only(
+                                          left: 80,
+                                          right: 20,
+                                        ),
+                                        message:
+                                            "Silahkan untuk memberikan durasi kegiatan dalam menit (Contoh input '13' memiliki arti durasi 13 menit)",
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            final dynamic tooltip =
+                                                _tooltipDuration.currentState;
+                                            tooltip.ensureTooltipVisible();
+                                          },
+                                          child: const Icon(
+                                            Icons.info,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        // Repeat Interval n frequency
-                        Row(
-                          children: [
-                            // Repeat Frequency
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Repeat",
-                                    style: textStyle,
+                                const SizedBox(
+                                  height: 5,
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                    left: 10,
+                                    right: 10,
                                   ),
-                                  const SizedBox(
-                                    height: 5,
+                                  alignment: Alignment.centerLeft,
+                                  width: constraints.maxWidth,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey,
+                                      width: 1.0,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.only(
-                                      left: 10,
-                                      right: 10,
-                                    ),
-                                    alignment: Alignment.centerLeft,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: Colors.grey,
-                                        width: 1.0,
-                                      ),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: DropdownButton(
-                                      isExpanded: true,
-                                      value: rptFreq,
-                                      hint: Text(
-                                        "Choose one only",
-                                        style: textStyleGrey,
-                                      ),
-                                      items: [
-                                        DropdownMenuItem(
-                                          value: "Never",
-                                          child: Text(
-                                            "Never",
-                                            style: textStyle,
-                                          ),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: "Daily",
-                                          child: Text(
-                                            "Daily",
-                                            style: textStyle,
-                                          ),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: "Weekly",
-                                          child: Text(
-                                            "Weekly",
-                                            style: textStyle,
-                                          ),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: "Monthly",
-                                          child: Text(
-                                            "Monthly",
-                                            style: textStyle,
-                                          ),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: "Yearly",
-                                          child: Text(
-                                            "Yearly",
-                                            style: textStyle,
-                                          ),
-                                        ),
-                                      ],
-                                      onChanged: (v) {
-                                        setState(() {
-                                          rptFreq = v;
-                                          // ignore: avoid_print
-                                          print(rptFreq);
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(
-                              width: 5,
-                            ),
-                            // Duration Frequent
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
+                                  child: Row(
                                     children: [
                                       Expanded(
                                         flex: 6,
-                                        child: Text(
-                                          "Rep Duration",
-                                          style: textStyle,
+                                        child: TextFormField(
+                                          autofocus: false,
+                                          keyboardType: const TextInputType
+                                              .numberWithOptions(),
+                                          inputFormatters: <TextInputFormatter>[
+                                            FilteringTextInputFormatter.allow(
+                                                RegExp(r'[0-9]')),
+                                          ],
+                                          decoration: InputDecoration(
+                                            hintText: "Dalam Menit",
+                                            hintStyle: textStyleGrey,
+                                          ),
+                                          validator: (v) {
+                                            if (v == null || v.isEmpty) {
+                                              return 'Silahkan isi durasi kegiatan';
+                                            } else {
+                                              return null;
+                                            }
+                                          },
+                                          controller: duration,
+                                          onChanged: (v) {
+                                            print(duration.text);
+                                          },
                                         ),
                                       ),
                                       const SizedBox(
-                                        width: 5,
+                                        height: 5,
                                       ),
-                                      //Tambah informasi (How many times do you want to repeat it?)
-                                      Expanded(
+                                      const Expanded(
                                         flex: 2,
-                                        child: Tooltip(
-                                          key: _tooltipRepDuration,
-                                          margin: const EdgeInsets.only(
-                                            left: 80,
-                                            right: 20,
-                                          ),
-                                          message:
-                                              "Please enter the duration of repetition (E.g. Your repetition is daily and the duration is 2, then your activity will be repeated 2 days in a row)",
-                                          child: GestureDetector(
-                                            onTap: () {
-                                              final dynamic tooltip =
-                                                  _tooltipRepDuration
-                                                      .currentState;
-                                              tooltip.ensureTooltipVisible();
-                                            },
-                                            child: const Icon(
-                                              Icons.info,
-                                              color: Colors.black,
-                                            ),
-                                          ),
+                                        child: Icon(
+                                          Icons.timer_outlined,
+                                          color: Colors.grey,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(
-                                    height: 5,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      // Input optional
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _isContentInputOptionalVisible =
+                                !_isContentInputOptionalVisible;
+                          });
+                        },
+                        child: Container(
+                          alignment: Alignment.center,
+                          width: constraints.maxWidth,
+                          child: Row(
+                            children: [
+                              const Expanded(
+                                child: Divider(
+                                  color: Colors.grey,
+                                  height: 36,
+                                  thickness: 1,
+                                ),
+                              ),
+                              const SizedBox(
+                                width: 5,
+                              ),
+                              Text(
+                                "Input Opsional",
+                                style: textStyleGrey,
+                              ),
+                              const SizedBox(
+                                width: 5,
+                              ),
+                              const Expanded(
+                                child: Divider(
+                                  color: Colors.grey,
+                                  height: 36,
+                                  thickness: 1,
+                                ),
+                              ),
+                              const SizedBox(
+                                width: 5,
+                              ),
+                              Icon(
+                                _isContentInputOptionalVisible
+                                    ? Icons.keyboard_arrow_down_rounded
+                                    : Icons.keyboard_arrow_up_rounded,
+                                color: Colors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      // Input optional - content
+                      Visibility(
+                        visible: _isContentInputOptionalVisible,
+                        child: Column(
+                          children: [
+                            // Tasks Input
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 6,
+                                      child: Text(
+                                        "Sub tugas",
+                                        style: textStyle,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    // Information = if user have more than 1 task user delimeter please like (,)
+                                    Expanded(
+                                      flex: 2,
+                                      child: Tooltip(
+                                        key: _tooltipTasks,
+                                        margin: const EdgeInsets.only(
+                                          left: 40,
+                                          right: 20,
+                                        ),
+                                        message:
+                                            "Jika kamu ingin memasukkan lebih dari 1 sub tugas. Silahkan gunakan tanda koma (,) sebagai pemisah (Contoh: Melihat email, Membalas email).",
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            final dynamic tooltip =
+                                                _tooltipTasks.currentState;
+                                            tooltip.ensureTooltipVisible();
+                                          },
+                                          child: const Icon(
+                                            Icons.info,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 5,
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                    left: 10,
+                                    right: 10,
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.only(
-                                      left: 10,
-                                      right: 10,
+                                  alignment: Alignment.centerLeft,
+                                  width: constraints.maxWidth,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: Colors.grey,
+                                      width: 1.0,
                                     ),
-                                    alignment: Alignment.centerLeft,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
+                                  ),
+                                  child: TextFormField(
+                                    autofocus: false,
+                                    keyboardType: TextInputType.text,
+                                    textCapitalization:
+                                        TextCapitalization.sentences,
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          "Masukkan sub tugas kamu disini",
+                                      hintStyle: textStyleGrey,
+                                    ),
+                                    onChanged: (value) {
+                                      addTask(value, _isCheckedTaskStatus);
+                                    },
+                                    controller: tasks,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            // Combo Category
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 6,
+                                      child: Text(
+                                        "Kategori",
+                                        style: textStyle,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Tooltip(
+                                        key: _tooltipCategory,
+                                        margin: const EdgeInsets.only(
+                                          left: 80,
+                                          right: 20,
+                                        ),
+                                        message:
+                                            "Silahkan pilih salah satu kategori kegiatan jika menginginkan (Contoh: Olahraga atau Proyek Kuliah).",
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            final dynamic tooltip =
+                                                _tooltipCategory.currentState;
+                                            tooltip.ensureTooltipVisible();
+                                          },
+                                          child: const Icon(
+                                            Icons.info,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 5,
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                    left: 10,
+                                    right: 10,
+                                  ),
+                                  alignment: Alignment.centerLeft,
+                                  width: constraints.maxWidth,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey,
+                                      width: 1.0,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: DropdownButton(
+                                    isExpanded: true,
+                                    value: catID,
+                                    hint: Text(
+                                      "Silahkan pilih salah satu jika ingin",
+                                      style: textStyleGrey,
+                                    ),
+                                    items: dropdownCat,
+                                    onChanged: (v) {
+                                      setState(() {
+                                        catID = v ?? "Lainnya";
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            // Add Activity Category and Color - Title (Hide n show)
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isContentAddCategoryVisible =
+                                      !_isContentAddCategoryVisible;
+                                });
+                              },
+                              child: Container(
+                                alignment: Alignment.centerRight,
+                                width: constraints.maxWidth,
+                                child: Row(
+                                  children: [
+                                    const Expanded(
+                                      child: Divider(
                                         color: Colors.grey,
-                                        width: 1.0,
+                                        height: 36,
+                                        thickness: 1,
                                       ),
-                                      borderRadius: BorderRadius.circular(10),
                                     ),
-                                    child: TextFormField(
-                                      autofocus: false,
-                                      enabled:
-                                          rptFreq == "Never" ? false : true,
-                                      keyboardType: const TextInputType
-                                          .numberWithOptions(),
-                                      decoration: InputDecoration(
-                                        hintText:
-                                            "How long do you want to repeat it?",
-                                        hintStyle: textStyleGrey,
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    Text(
+                                      "Tidak menemukan kategori?",
+                                      style: textStyleGrey,
+                                    ),
+                                    Text(
+                                      " Tambahkan",
+                                      style: textStyle,
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    const Expanded(
+                                      child: Divider(
+                                        color: Colors.grey,
+                                        height: 36,
+                                        thickness: 1,
                                       ),
-                                      controller: rptDur,
-                                      onFieldSubmitted: (v) {
-                                        setState(() {
-                                          // ignore: avoid_print
-                                          print(rptDur.text);
-                                        });
-                                      },
-                                      validator: (v) {
-                                        if (rptFreq != "Never" && v == "") {
-                                          return 'Opps, You need to fill this';
-                                        } else if (v!.contains(".") ||
-                                            v.contains("-")) {
-                                          return 'Please number only.';
-                                        } else {
-                                          return null;
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    Icon(
+                                      _isContentAddCategoryVisible
+                                          ? Icons.keyboard_arrow_down_rounded
+                                          : Icons.keyboard_arrow_up_rounded,
+                                      color: Colors.grey,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            // Add Activity Category and Color - Content (Hide n show)
+                            Visibility(
+                              visible: _isContentAddCategoryVisible,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 2,
+                                    child: GestureDetector(
+                                      onTap: () async {
+                                        Color selectedColor = await showDialog(
+                                          context: context,
+                                          builder: (BuildContext context) {
+                                            return AlertDialog(
+                                              title: Text(
+                                                'Pilih Warna Kategori Kamu',
+                                                style: subHeaderStyleBold,
+                                              ),
+                                              content: SingleChildScrollView(
+                                                child: ColorPicker(
+                                                  color: currentColor,
+                                                  onColorChanged:
+                                                      (Color color) {
+                                                    setState(() =>
+                                                        currentColor = color);
+                                                  },
+                                                  width: 50,
+                                                  height: 50,
+                                                  borderRadius: 10,
+                                                  heading: Text(
+                                                    'Pilih Warna',
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .headlineSmall,
+                                                  ),
+                                                  pickersEnabled: const <ColorPickerType,
+                                                      bool>{
+                                                    ColorPickerType.both: false,
+                                                    ColorPickerType.primary:
+                                                        true,
+                                                    ColorPickerType.accent:
+                                                        false,
+                                                    ColorPickerType.bw: false,
+                                                    ColorPickerType.custom:
+                                                        false,
+                                                    ColorPickerType.wheel:
+                                                        false,
+                                                  },
+                                                ),
+                                              ),
+                                              actions: <Widget>[
+                                                GestureDetector(
+                                                  onTap: () {
+                                                    Navigator.of(context)
+                                                        .pop(currentColor);
+                                                  },
+                                                  child: Container(
+                                                    alignment: Alignment.center,
+                                                    width: constraints.maxWidth,
+                                                    height: 40,
+                                                    decoration: BoxDecoration(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              15),
+                                                      color:
+                                                          const Color.fromARGB(
+                                                              255, 3, 0, 66),
+                                                    ),
+                                                    child: Text(
+                                                      'Pilih',
+                                                      style: textStyleBoldWhite,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+
+                                        // ignore: unnecessary_null_comparison
+                                        if (selectedColor != null) {
+                                          setState(() =>
+                                              currentColor = selectedColor);
+                                          String argbCode =
+                                              ColorTools.colorCode(
+                                            currentColor,
+                                          );
+                                          colorToARGB(argbCode);
+                                          print(
+                                              'ARGB Code: (${colorA.text}, ${colorR.text}, ${colorG.text}, ${colorB.text})');
                                         }
                                       },
+                                      child: Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.grey,
+                                            width: 1,
+                                          ),
+                                          color: currentColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 8,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Nama kategori",
+                                          style: textStyle,
+                                        ),
+                                        const SizedBox(
+                                          height: 5,
+                                        ),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 6,
+                                              child: Container(
+                                                padding: const EdgeInsets.only(
+                                                  left: 10,
+                                                  right: 10,
+                                                ),
+                                                alignment: Alignment.centerLeft,
+                                                decoration: BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                    color: Colors.grey,
+                                                    width: 1.0,
+                                                  ),
+                                                ),
+                                                child: TextFormField(
+                                                  autofocus: false,
+                                                  keyboardType:
+                                                      TextInputType.text,
+                                                  textCapitalization:
+                                                      TextCapitalization
+                                                          .sentences,
+                                                  decoration: InputDecoration(
+                                                    hintText:
+                                                        "Masukkan kategori baru",
+                                                    hintStyle: textStyleGrey,
+                                                  ),
+                                                  controller: newCat,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(
+                                              width: 5,
+                                            ),
+                                            Expanded(
+                                              flex: 3,
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  if (newCat.text == "") {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                            const SnackBar(
+                                                                content: Text(
+                                                                    'Silahkan isi nama kategori')));
+                                                  } else {
+                                                    createNewCategory();
+                                                    getCategoryData();
+                                                  }
+                                                },
+                                                child: Container(
+                                                  alignment: Alignment.center,
+                                                  width: constraints.maxWidth,
+                                                  height: 50,
+                                                  decoration: BoxDecoration(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            15),
+                                                    color: const Color.fromARGB(
+                                                        255, 3, 0, 66),
+                                                  ),
+                                                  child: Text(
+                                                    'Tambah',
+                                                    style: textStyleBoldWhite,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        // Notification
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 6,
-                                  child: Text(
-                                    "Notification",
-                                    style: textStyle,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                //Tambah informasi (How many times do you want to repeat it?)
-                                Expanded(
-                                  flex: 2,
-                                  child: Tooltip(
-                                    key: _tooltipNotif,
-                                    margin: const EdgeInsets.only(
-                                      left: 80,
-                                      right: 20,
-                                    ),
-                                    message:
-                                        "Please set notification time in a MINUTE before activity and if you want to enter more than one notification, please use the coma (,) separator (E.g: 60, 120)",
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        final dynamic tooltip =
-                                            _tooltipNotif.currentState;
-                                        tooltip.ensureTooltipVisible();
-                                      },
-                                      child: const Icon(
-                                        Icons.info,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
                             const SizedBox(
                               height: 5,
                             ),
-                            Container(
-                              padding: const EdgeInsets.only(
-                                left: 10,
-                                right: 10,
-                              ),
-                              alignment: Alignment.centerLeft,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Colors.grey,
-                                  width: 1.0,
-                                ),
-                              ),
-                              child: TextFormField(
-                                autofocus: false,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText:
-                                      "Set time notification in a minutes",
-                                  hintStyle: textStyleGrey,
-                                ),
-                                controller: notif,
-                                onChanged: (value) {
-                                  addNotification(value);
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        // Activity Location
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+                            // Repeat Interval n frequency
                             Row(
                               children: [
+                                // Repeat Frequency
                                 Expanded(
-                                  flex: 6,
-                                  child: Text(
-                                    "Locations",
-                                    style: textStyle,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                //Tambah informasi (How many times do you want to repeat it?)
-                                Expanded(
-                                  flex: 2,
-                                  child: Tooltip(
-                                    key: _tooltipLoc,
-                                    margin: const EdgeInsets.only(
-                                      left: 40,
-                                      right: 20,
-                                    ),
-                                    message:
-                                        "Please enter the location you want to add for",
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        final dynamic tooltip =
-                                            _tooltipLoc.currentState;
-                                        tooltip.ensureTooltipVisible();
-                                      },
-                                      child: const Icon(
-                                        Icons.info,
-                                        color: Colors.black,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Ulangi",
+                                        style: textStyle,
                                       ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.only(
-                                left: 10,
-                                right: 10,
-                              ),
-                              alignment: Alignment.center,
-                              width: double.infinity,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Colors.grey,
-                                  width: 1.0,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                                color: Colors.grey[300],
-                              ),
-                              child: GestureDetector(
-                                onTap: () async {
-                                  geoPoint = await osm.showSimplePickerLocation(
-                                    context: context,
-                                    isDismissible: true,
-                                    title: 'Add a activity location',
-                                    titleStyle: subHeaderStyleBold,
-                                    textConfirmPicker: "Add",
-                                    initPosition: osm.GeoPoint(
-                                      latitude: -7.3225653,
-                                      longitude: 112.7678477,
-                                    ),
-                                    // initCurrentUserPosition: true,
-                                    zoomOption: const osm.ZoomOption(
-                                      initZoom: 20,
-                                    ),
-                                  );
-
-                                  if (geoPoint != null) {
-                                    List<Placemark> placemarks =
-                                        await placemarkFromCoordinates(
-                                            geoPoint.latitude,
-                                            geoPoint.longitude);
-                                    if (placemarks.isNotEmpty) {
-                                      Placemark placemark = placemarks[0];
-                                      setState(() {
-                                        lat = geoPoint.latitude.toString();
-                                        long = geoPoint.longitude.toString();
-                                        loc =
-                                            "${placemark.street}, ${placemark.locality}, ${placemark.administrativeArea}, ${placemark.country}";
-                                        // print("$loc, $lat, $long");
-                                        addLocation(loc, lat, long);
-                                      });
-                                    }
-                                  }
-                                },
-                                child: Text(
-                                  "Click here to add new location",
-                                  style: textStyle,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        // List of Locations - Title (Hide n show)
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _isContentListOfLocationVisible =
-                                  !_isContentListOfLocationVisible;
-                            });
-                          },
-                          child: Container(
-                            alignment: Alignment.centerRight,
-                            width: double.infinity,
-                            child: Row(
-                              children: [
-                                const Expanded(
-                                  child: Divider(
-                                    color: Colors.grey,
-                                    height: 36,
-                                    thickness: 1,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Text(
-                                  "Your activity locations",
-                                  style: textStyleGrey,
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                const Expanded(
-                                  child: Divider(
-                                    color: Colors.grey,
-                                    height: 36,
-                                    thickness: 1,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Icon(
-                                  _isContentListOfLocationVisible
-                                      ? Icons.keyboard_arrow_down_rounded
-                                      : Icons.keyboard_arrow_up_rounded,
-                                  color: Colors.grey,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // List of Locations - Content (Hide n show)
-                        Visibility(
-                          visible: _isContentListOfLocationVisible,
-                          child: Container(
-                            alignment: Alignment.center,
-                            width: double.infinity,
-                            height: locations.isEmpty ? 50 : 100,
-                            padding: locations.isEmpty
-                                ? const EdgeInsets.all(10)
-                                : const EdgeInsets.only(
-                                    left: 5,
-                                    right: 5,
-                                  ),
-                            decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(10)),
-                            child: locations.isEmpty
-                                ? Text(
-                                    "There are no activity locations",
-                                    style: textStyle,
-                                  )
-                                : SingleChildScrollView(
-                                    child: Column(
-                                      children: List.generate(
-                                        locations.length,
-                                        (index) {
-                                          return ListTile(
-                                            title: GestureDetector(
-                                              onTap: () async {
-                                                openGoogleMaps(
-                                                  locations[index].latitude,
-                                                  locations[index].longitude,
-                                                );
-                                              },
+                                      const SizedBox(
+                                        height: 5,
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.only(
+                                          left: 10,
+                                          right: 10,
+                                        ),
+                                        alignment: Alignment.centerLeft,
+                                        width: constraints.maxWidth,
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: Colors.grey,
+                                            width: 1.0,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: DropdownButton(
+                                          isExpanded: true,
+                                          value: rptFreq,
+                                          hint: Text(
+                                            "Silahkan pilih salah satu",
+                                            style: textStyleGrey,
+                                          ),
+                                          items: [
+                                            DropdownMenuItem(
+                                              value: "Tidak",
                                               child: Text(
-                                                  locations[index].address),
+                                                "Tidak",
+                                                style: textStyle,
+                                              ),
                                             ),
-                                            trailing: IconButton(
-                                              icon: const Icon(Icons.delete),
-                                              onPressed: () =>
-                                                  removeLocation(index),
+                                            DropdownMenuItem(
+                                              value: "Harian",
+                                              child: Text(
+                                                "Harian",
+                                                style: textStyle,
+                                              ),
                                             ),
-                                          );
-                                        },
+                                            DropdownMenuItem(
+                                              value: "Mingguan",
+                                              child: Text(
+                                                "Mingguan",
+                                                style: textStyle,
+                                              ),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: "Bulanan",
+                                              child: Text(
+                                                "Bulanan",
+                                                style: textStyle,
+                                              ),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: "Tahunan",
+                                              child: Text(
+                                                "Tahunan",
+                                                style: textStyle,
+                                              ),
+                                            ),
+                                          ],
+                                          onChanged: (v) {
+                                            setState(() {
+                                              rptFreq = v;
+                                              print(rptFreq);
+                                            });
+                                          },
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        // Attach File
-                        MyInputFile(
-                          title: "Add Files",
-                          placeholder: "attach any files do you want",
-                          onTapFunct: () {
-                            getFile(context);
-                          },
-                        ),
-                        // List of files - Title (Hide n show)
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _isContentListOfFilesVisible =
-                                  !_isContentListOfFilesVisible;
-                            });
-                          },
-                          child: Container(
-                            alignment: Alignment.centerRight,
-                            width: double.infinity,
-                            child: Row(
-                              children: [
-                                const Expanded(
-                                  child: Divider(
-                                    color: Colors.grey,
-                                    height: 36,
-                                    thickness: 1,
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(
                                   width: 5,
                                 ),
-                                Text(
-                                  "Your attachment files",
-                                  style: textStyleGrey,
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                const Expanded(
-                                  child: Divider(
-                                    color: Colors.grey,
-                                    height: 36,
-                                    thickness: 1,
+                                // Duration Frequent
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            flex: 6,
+                                            child: Text(
+                                              "Durasi",
+                                              style: textStyle,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                            width: 5,
+                                          ),
+                                          //Tambah informasi (How many times do you want to repeat it?)
+                                          Expanded(
+                                            flex: 2,
+                                            child: Tooltip(
+                                              key: _tooltipRepDuration,
+                                              margin: const EdgeInsets.only(
+                                                left: 80,
+                                                right: 20,
+                                              ),
+                                              message:
+                                                  "Silahkan masukkan durasi pengulangan (Contoh: Pengulangan harian and durasi 2, Maka kegiatanmu akan dijadwalkan selama 2 hari kedepan).",
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  final dynamic tooltip =
+                                                      _tooltipRepDuration
+                                                          .currentState;
+                                                  tooltip
+                                                      .ensureTooltipVisible();
+                                                },
+                                                child: const Icon(
+                                                  Icons.info,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(
+                                        height: 5,
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.only(
+                                          left: 10,
+                                          right: 10,
+                                        ),
+                                        alignment: Alignment.centerLeft,
+                                        width: constraints.maxWidth,
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: Colors.grey,
+                                            width: 1.0,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: TextFormField(
+                                          autofocus: false,
+                                          enabled:
+                                              rptFreq == "Tidak" ? false : true,
+                                          keyboardType: const TextInputType
+                                              .numberWithOptions(),
+                                          decoration: InputDecoration(
+                                            hintText:
+                                                "Masukkan durasi pengulangan",
+                                            hintStyle: textStyleGrey,
+                                          ),
+                                          controller: rptDur,
+                                          onFieldSubmitted: (v) {
+                                            setState(() {
+                                              print(rptDur.text);
+                                            });
+                                          },
+                                          validator: (v) {
+                                            if (rptFreq != "Tidak" && v == "") {
+                                              return 'Silahkan isi durasi pengulangan kamu';
+                                            } else if (v!.contains(".") ||
+                                                v.contains("-")) {
+                                              return 'Mohon masukkan angka saja';
+                                            } else {
+                                              return null;
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Icon(
-                                  _isContentListOfFilesVisible
-                                      ? Icons.keyboard_arrow_down_rounded
-                                      : Icons.keyboard_arrow_up_rounded,
-                                  color: Colors.grey,
                                 ),
                               ],
                             ),
-                          ),
-                        ),
-                        // List of files - Content (Hide n show)
-                        Visibility(
-                          visible: _isContentListOfFilesVisible,
-                          child: Container(
-                            alignment: Alignment.center,
-                            width: double.infinity,
-                            height: files.isEmpty ? 50 : 100,
-                            padding: files.isEmpty
-                                ? const EdgeInsets.all(10)
-                                : const EdgeInsets.only(
-                                    left: 5,
-                                    right: 5,
-                                  ),
-                            decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(10)),
-                            child: files.isEmpty
-                                ? Text(
-                                    "There are no attachment files",
-                                    style: textStyle,
-                                  )
-                                : SingleChildScrollView(
-                                    child: Column(
-                                      children: List.generate(
-                                        files.length,
-                                        (index) {
-                                          return ListTile(
-                                            title: GestureDetector(
-                                              onTap: () {
-                                                openFile(files[index].path);
-                                              },
-                                              child: Text(files[index].name),
-                                            ),
-                                            trailing: IconButton(
-                                              icon: const Icon(Icons.delete),
-                                              onPressed: () {
-                                                removeFile(index);
-                                              },
-                                            ),
-                                          );
-                                        },
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            // Notification
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 6,
+                                      child: Text(
+                                        "Pengingat kegiatan (Reminder)",
+                                        style: textStyle,
                                       ),
                                     ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    //Tambah informasi (How many times do you want to repeat it?)
+                                    Expanded(
+                                      flex: 2,
+                                      child: Tooltip(
+                                        key: _tooltipNotif,
+                                        margin: const EdgeInsets.only(
+                                          left: 80,
+                                          right: 20,
+                                        ),
+                                        message:
+                                            "Silahkan untuk memasukkan pengingat waktu dalam menit. Gunakan pemisah tanda koma (,) jika ingin memasukkan lebih dari 1 reminder (Contoh: 60, 120)",
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            final dynamic tooltip =
+                                                _tooltipNotif.currentState;
+                                            tooltip.ensureTooltipVisible();
+                                          },
+                                          child: const Icon(
+                                            Icons.info,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 5,
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                    left: 10,
+                                    right: 10,
                                   ),
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Button Add
-                  GestureDetector(
-                    onTap: () {
-                      if (_formKey.currentState != null &&
-                          !_formKey.currentState!.validate()) {
-                        AlertInformation.showDialogBox(
-                          context: context,
-                          title: "Can't Be Empty",
-                          message:
-                              "There is a few empty input, please complete all mandatory fields.",
-                        );
+                                  alignment: Alignment.centerLeft,
+                                  width: constraints.maxWidth,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: Colors.grey,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  child: TextFormField(
+                                    autofocus: false,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          "Silahkan masukkan waktu pengingat kegiatan",
+                                      hintStyle: textStyleGrey,
+                                    ),
+                                    controller: notif,
+                                    onChanged: (value) {
+                                      addNotification(value);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            // Activity Location
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 6,
+                                      child: Text(
+                                        "Lokasi",
+                                        style: textStyle,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    //Tambah informasi (How many times do you want to repeat it?)
+                                    Expanded(
+                                      flex: 2,
+                                      child: Tooltip(
+                                        key: _tooltipLoc,
+                                        margin: const EdgeInsets.only(
+                                          left: 40,
+                                          right: 20,
+                                        ),
+                                        message:
+                                            "Silahkan masukkan lokasi yang kamu inginkan untuk melaksanakan kegiatan",
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            final dynamic tooltip =
+                                                _tooltipLoc.currentState;
+                                            tooltip.ensureTooltipVisible();
+                                          },
+                                          child: const Icon(
+                                            Icons.info,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 5,
+                                ),
+                                // Container(
+                                //   padding: const EdgeInsets.only(
+                                //     left: 10,
+                                //     right: 10,
+                                //   ),
+                                //   alignment: Alignment.center,
+                                //   width: constraints.maxWidth,
+                                //   height: 50,
+                                //   decoration: BoxDecoration(
+                                //     border: Border.all(
+                                //       color: Colors.grey,
+                                //       width: 1.0,
+                                //     ),
+                                //     borderRadius: BorderRadius.circular(10),
+                                //     color: Colors.grey[300],
+                                //   ),
+                                //   child: GestureDetector(
+                                //     onTap: () async {
+                                //       await _requestLocationPermission(); // Meminta izin lokasi sebelum menampilkan picker lokasi
 
-                        FocusScope.of(context).unfocus();
-                      } else {
-                        addActivity();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                                "Successfully added temporary activity. Check your activity cart above."),
-                          ),
-                        );
-                        FocusScope.of(context).unfocus();
-                      }
-                    },
-                    child: Container(
-                      alignment: Alignment.center,
-                      width: double.infinity,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        color: const Color.fromARGB(255, 3, 0, 66),
+                                //       if (await Permission.location.isGranted) {
+                                //         geoPoint =
+                                //             await osm.showSimplePickerLocation(
+                                //           context: context,
+                                //           isDismissible: true,
+                                //           title: 'Tambah Lokasi',
+                                //           titleStyle: subHeaderStyleBold,
+                                //           textConfirmPicker: "Tambah",
+                                //           // initPosition: osm.GeoPoint(
+                                //           //   latitude: -7.3225653,
+                                //           //   longitude: 112.7678477,
+                                //           // ),
+                                //           initCurrentUserPosition:
+                                //               const osm.UserTrackingOption(
+                                //             enableTracking: true,
+                                //             unFollowUser: true,
+                                //           ),
+                                //           zoomOption: const osm.ZoomOption(
+                                //             initZoom: 20,
+                                //           ),
+                                //         );
+
+                                //         if (geoPoint != null) {
+                                //           FocusScope.of(context).unfocus();
+                                //           List<Placemark> placemarks =
+                                //               await placemarkFromCoordinates(
+                                //                   geoPoint.latitude,
+                                //                   geoPoint.longitude);
+                                //           if (placemarks.isNotEmpty) {
+                                //             Placemark placemark = placemarks[0];
+                                //             setState(() {
+                                //               lat =
+                                //                   geoPoint.latitude.toString();
+                                //               long =
+                                //                   geoPoint.longitude.toString();
+                                //               loc =
+                                //                   "${placemark.street}, ${placemark.locality}, ${placemark.administrativeArea}, ${placemark.country}";
+                                //               // print("$loc, $lat, $long");
+                                //               addLocation(loc, lat, long);
+                                //             });
+                                //           }
+                                //         } else {
+                                //           FocusScope.of(context).unfocus();
+                                //         }
+                                //       } else {
+                                //         ScaffoldMessenger.of(context)
+                                //             .showSnackBar(
+                                //           const SnackBar(
+                                //               content: Text(
+                                //                   'Izin lokasi tidak diberikan')),
+                                //         );
+                                //       }
+                                //     },
+                                //     child: Expanded(
+                                //       child: Text(
+                                //         "Click disini untuk menambahkan lokasi baru",
+                                //         style: textStyle,
+                                //       ),
+                                //     ),
+                                //   ),
+                                // ),
+                                GestureDetector(
+                                  onTap: () async {
+                                    await _requestLocationPermission(); // Meminta izin lokasi sebelum menampilkan picker lokasi
+
+                                    if (await Permission.location.isGranted) {
+                                      geoPoint =
+                                          await osm.showSimplePickerLocation(
+                                        context: context,
+                                        isDismissible: true,
+                                        title: 'Tambah Lokasi',
+                                        titleStyle: subHeaderStyleBold,
+                                        textConfirmPicker: "Tambah",
+                                        // initPosition: osm.GeoPoint(
+                                        //   latitude: -7.3225653,
+                                        //   longitude: 112.7678477,
+                                        // ),
+                                        initCurrentUserPosition:
+                                            const osm.UserTrackingOption(
+                                          enableTracking: true,
+                                          unFollowUser: true,
+                                        ),
+                                        zoomOption: const osm.ZoomOption(
+                                          initZoom: 20,
+                                        ),
+                                      );
+
+                                      if (geoPoint != null) {
+                                        FocusScope.of(context).unfocus();
+                                        List<Placemark> placemarks =
+                                            await placemarkFromCoordinates(
+                                                geoPoint.latitude,
+                                                geoPoint.longitude);
+                                        if (placemarks.isNotEmpty) {
+                                          Placemark placemark = placemarks[0];
+                                          setState(() {
+                                            lat = geoPoint.latitude.toString();
+                                            long =
+                                                geoPoint.longitude.toString();
+                                            loc =
+                                                "${placemark.street}, ${placemark.locality}, ${placemark.administrativeArea}, ${placemark.country}";
+                                            // print("$loc, $lat, $long");
+                                            addLocation(loc, lat, long);
+                                          });
+                                        }
+                                      } else {
+                                        FocusScope.of(context).unfocus();
+                                      }
+                                    } else {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'Izin lokasi tidak diberikan')),
+                                      );
+                                    }
+                                  },
+                                  child: Container(
+                                    alignment: Alignment.center,
+                                    width: constraints.maxWidth,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(15),
+                                      color: Colors.grey,
+                                    ),
+                                    child: // Space between icon and text
+                                        Text(
+                                      'Click disini untuk menambahkan lokasi baru',
+                                      style: textStyle,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // List of Locations - Title (Hide n show)
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isContentListOfLocationVisible =
+                                      !_isContentListOfLocationVisible;
+                                });
+                              },
+                              child: Container(
+                                alignment: Alignment.centerRight,
+                                width: constraints.maxWidth,
+                                child: Row(
+                                  children: [
+                                    const Expanded(
+                                      child: Divider(
+                                        color: Colors.grey,
+                                        height: 36,
+                                        thickness: 1,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    Text(
+                                      "Lokasi kegiatan kamu",
+                                      style: textStyleGrey,
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    const Expanded(
+                                      child: Divider(
+                                        color: Colors.grey,
+                                        height: 36,
+                                        thickness: 1,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    Icon(
+                                      _isContentListOfLocationVisible
+                                          ? Icons.keyboard_arrow_down_rounded
+                                          : Icons.keyboard_arrow_up_rounded,
+                                      color: Colors.grey,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // List of Locations - Content (Hide n show)
+                            Visibility(
+                              visible: _isContentListOfLocationVisible,
+                              child: Container(
+                                alignment: Alignment.center,
+                                width: constraints.maxWidth,
+                                height: locations.isEmpty ? 50 : 100,
+                                padding: locations.isEmpty
+                                    ? const EdgeInsets.all(10)
+                                    : const EdgeInsets.only(
+                                        left: 5,
+                                        right: 5,
+                                      ),
+                                decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10)),
+                                child: locations.isEmpty
+                                    ? Text(
+                                        "Tidak ada lokasi kegiatan",
+                                        style: textStyle,
+                                      )
+                                    : SingleChildScrollView(
+                                        child: Column(
+                                          children: List.generate(
+                                            locations.length,
+                                            (index) {
+                                              return ListTile(
+                                                title: GestureDetector(
+                                                  onTap: () async {
+                                                    openGoogleMaps(
+                                                      locations[index].latitude,
+                                                      locations[index]
+                                                          .longitude,
+                                                    );
+                                                  },
+                                                  child: Text(
+                                                      locations[index].address),
+                                                ),
+                                                trailing: IconButton(
+                                                  icon:
+                                                      const Icon(Icons.delete),
+                                                  onPressed: () =>
+                                                      removeLocation(index),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(
+                              height: 5,
+                            ),
+                            // Attach File
+                            // MyInputFile(
+                            //   title: "File",
+                            //   placeholder:
+                            //       "Click disini untuk menambahkan file kegiatan",
+                            //   onTapFunct: () {
+                            //     getFile(context);
+                            //     FocusScope.of(context).unfocus();
+                            //   },
+                            // ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 6,
+                                      child: Text(
+                                        "File Kegiatan",
+                                        style: textStyle,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    //Tambah informasi (How many times do you want to repeat it?)
+                                    Expanded(
+                                      flex: 2,
+                                      child: Tooltip(
+                                        key: _tooltipFile,
+                                        margin: const EdgeInsets.only(
+                                          left: 40,
+                                          right: 20,
+                                        ),
+                                        message:
+                                            "Silahkan masukkan file yang kamu inginkan untuk mendukung kegiatanmu",
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            final dynamic tooltip =
+                                                _tooltipFile.currentState;
+                                            tooltip.ensureTooltipVisible();
+                                          },
+                                          child: const Icon(
+                                            Icons.info,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 5,
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    getFile(context);
+                                    FocusScope.of(context).unfocus();
+                                  },
+                                  child: Container(
+                                    alignment: Alignment.center,
+                                    width: constraints.maxWidth,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(15),
+                                      color: Colors.grey,
+                                    ),
+                                    child: // Space between icon and text
+                                        Text(
+                                      'Click disini untuk menambahkan file kegiatan',
+                                      style: textStyle,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // List of files - Title (Hide n show)
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isContentListOfFilesVisible =
+                                      !_isContentListOfFilesVisible;
+                                });
+                              },
+                              child: Container(
+                                alignment: Alignment.centerRight,
+                                width: constraints.maxWidth,
+                                child: Row(
+                                  children: [
+                                    const Expanded(
+                                      child: Divider(
+                                        color: Colors.grey,
+                                        height: 36,
+                                        thickness: 1,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    Text(
+                                      "File kegiatan kamu",
+                                      style: textStyleGrey,
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    const Expanded(
+                                      child: Divider(
+                                        color: Colors.grey,
+                                        height: 36,
+                                        thickness: 1,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    Icon(
+                                      _isContentListOfFilesVisible
+                                          ? Icons.keyboard_arrow_down_rounded
+                                          : Icons.keyboard_arrow_up_rounded,
+                                      color: Colors.grey,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // List of files - Content (Hide n show)
+                            Visibility(
+                              visible: _isContentListOfFilesVisible,
+                              child: Container(
+                                alignment: Alignment.center,
+                                width: constraints.maxWidth,
+                                height: files.isEmpty ? 50 : 100,
+                                padding: files.isEmpty
+                                    ? const EdgeInsets.all(10)
+                                    : const EdgeInsets.only(
+                                        left: 5,
+                                        right: 5,
+                                      ),
+                                decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10)),
+                                child: files.isEmpty
+                                    ? Text(
+                                        "Tidak ada file kegiatan",
+                                        style: textStyle,
+                                      )
+                                    : SingleChildScrollView(
+                                        child: Column(
+                                          children: List.generate(
+                                            files.length,
+                                            (index) {
+                                              return ListTile(
+                                                title: GestureDetector(
+                                                  onTap: () {
+                                                    openFile(files[index].path);
+                                                  },
+                                                  child:
+                                                      Text(files[index].name),
+                                                ),
+                                                trailing: IconButton(
+                                                  icon:
+                                                      const Icon(Icons.delete),
+                                                  onPressed: () {
+                                                    removeFile(index);
+                                                  },
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(
+                              height: 10,
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.shopping_cart,
-                            color: Colors.white,
-                          ), // Logout icon
-                          const SizedBox(
-                              width: 8.0), // Space between icon and text
-                          Text(
-                            'Add Activity to Cart',
-                            style: textStyleBoldWhite,
+                      // Button Add
+                      GestureDetector(
+                        onTap: () {
+                          if (_formKey.currentState != null &&
+                              !_formKey.currentState!.validate()) {
+                            AlertInformation.showDialogBox(
+                              context: context,
+                              title: "Beberapa Input Kosong",
+                              message:
+                                  "Terdapat beberapa input yang kosong, Mohon untuk mengisi input yang wajib. Terima kasih.",
+                            );
+
+                            FocusScope.of(context).unfocus();
+                          } else {
+                            if (_isFixed == true && startTime.text == "") {
+                              AlertInformation.showDialogBox(
+                                context: context,
+                                title: "Peringatan",
+                                message:
+                                    "Harap mengisi waktu mulai, karena anda telah mengaktifkan fixed. Terima kasih.",
+                              );
+                            } else {
+                              addActivity();
+                              _isFixed = false;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      "Sukses menambahkan kegiatan. Cek kegiatan kamu pada ikon jadwal di pojok kanan atas."),
+                                ),
+                              );
+                            }
+                            FocusScope.of(context).unfocus();
+                          }
+                        },
+                        child: Container(
+                          alignment: Alignment.center,
+                          width: constraints.maxWidth,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(15),
+                            color: const Color.fromARGB(255, 3, 0, 66),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.calendar_month,
+                                color: Colors.white,
+                              ), // Logout icon
+                              const SizedBox(
+                                  width: 8.0), // Space between icon and text
+                              Text(
+                                'Tambah Kegiatan Sementara',
+                                style: textStyleBoldWhite,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          }),
         ),
       ),
     );

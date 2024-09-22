@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_description">Your app description here</string>
+    <string name="pickleapp">Pickle App</string>
+    <!-- Add other string resources as needed -->
+</resources>

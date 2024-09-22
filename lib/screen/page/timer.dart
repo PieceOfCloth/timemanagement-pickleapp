@@ -1,8 +1,16 @@
+// ignore_for_file: use_build_context_synchronously, avoid_print
+
+import 'dart:io';
+
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screen_lock/flutter_screen_lock.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'package:numberpicker/numberpicker.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pickleapp/screen/components/alert_information.dart';
 import 'package:pickleapp/screen/services/activity_task_state.dart';
 import 'package:pickleapp/screen/services/timer_state.dart';
 import 'package:pickleapp/theme.dart';
@@ -16,8 +24,6 @@ class Timers extends StatefulWidget {
 }
 
 class TimersState extends State<Timers> {
-  static const platform = MethodChannel('com.example.flutter_app/foreground');
-
   bool isFullScreen = false;
   bool isLocked = false;
   // final bool _isLocked = false;
@@ -27,53 +33,48 @@ class TimersState extends State<Timers> {
 
   /* ------------------------------------------------------------------------------------------------------------------- */
 
-  Future<void> _keepAppInForeground() async {
+  Future<void> fileDownloadOpen(String path, String name) async {
     try {
-      await platform.invokeMethod('keepAppInForeground');
-    } on PlatformException catch (e) {
-      print("Failed to keep app in foreground: '${e.message}'.");
+      showDialog(
+        context: context,
+        builder: (context) {
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+
+      String url = await FirebaseStorage.instance.ref(path).getDownloadURL();
+
+      // Download the file to a local path
+      final Directory tempDir = await getTemporaryDirectory();
+      final File tempFile = File('${tempDir.path}/$name');
+
+      if (await tempFile.exists()) {
+        await tempFile.delete();
+      }
+
+      await tempFile.create();
+      final http.Client httpClient = http.Client();
+      final http.Response response = await httpClient.get(Uri.parse(url));
+      await tempFile.writeAsBytes(response.bodyBytes);
+      Navigator.of(context).pop();
+      // Open the file
+      await OpenFile.open(tempFile.path);
+    } catch (e) {
+      Navigator.of(context).pop();
+      print(e);
     }
   }
 
   Color getPriorityColor(String important, String urgent) {
-    if (important == "Important" && urgent == "Urgent") {
+    if (important == "Penting" && urgent == "Mendesak") {
       return Colors.red;
-    } else if (important == "Important" && urgent == "Not Urgent") {
+    } else if (important == "Penting" && urgent == "Tidak Mendesak") {
       return Colors.yellow;
-    } else if (important == "Not Important" && urgent == "Urgent") {
+    } else if (important == "Tidak Penting" && urgent == "Mendesak") {
       return Colors.green;
     } else {
       return Colors.blue;
     }
-  }
-
-  void showInfoDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext ctxt) {
-        return AlertDialog(
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: subHeaderStyleBold,
-              ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () {
-                  Navigator.of(ctxt).pop();
-                },
-              ),
-            ],
-          ),
-          content: Text(
-            message,
-            style: textStyle,
-          ),
-        );
-      },
-    );
   }
 
   // Show theory infographic in a alertdialog
@@ -86,7 +87,7 @@ class TimersState extends State<Timers> {
             return Consumer<TimerState>(builder: (context, tmr, child) {
               return AlertDialog(
                 title: Text(
-                  "Set a Timer (In a minutes)",
+                  "Atur timer (Dalam menit)",
                   style: subHeaderStyleBold,
                 ),
                 content: SizedBox(
@@ -99,11 +100,11 @@ class TimersState extends State<Timers> {
                         const TabBar(
                           tabs: [
                             Tab(
-                              text: 'Work time',
+                              text: 'Waktu fokus',
                               icon: Icon(Icons.work),
                             ),
                             Tab(
-                              text: 'Break time',
+                              text: 'Waktu istirahat',
                               icon: Icon(Icons.single_bed),
                             ),
                           ],
@@ -144,7 +145,7 @@ class TimersState extends State<Timers> {
                     onPressed: () {
                       Navigator.of(context).pop();
                     },
-                    child: Text("Close", style: textStyleBold),
+                    child: Text("Tutup", style: textStyleBold),
                   ),
                 ],
               );
@@ -161,15 +162,20 @@ class TimersState extends State<Timers> {
       builder: (BuildContext context) {
         return StatefulBuilder(builder: (context, setState) {
           return AlertDialog(
-            title: Text(
-              "Strict Mode",
-              style: subHeaderStyleBold,
-            ),
-            icon: IconButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              icon: const Icon(Icons.close),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Mode Fokus",
+                  style: subHeaderStyleBold,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
             ),
             content: SizedBox(
               width: double.maxFinite,
@@ -186,7 +192,7 @@ class TimersState extends State<Timers> {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    'Lock App',
+                    'Kunci perangkat',
                     style: textStyle,
                   ),
                 ],
@@ -212,27 +218,19 @@ class TimersState extends State<Timers> {
     });
   }
 
-  Future<void> _releaseForegroundLock() async {
-    try {
-      await platform.invokeMethod('releaseForegroundLock');
-    } on PlatformException catch (e) {
-      print("Failed to release foreground lock: '${e.message}'.");
-    }
-  }
-
-  void _showLockScreen(String code) {
+  void _showLockScreen(
+      BuildContext context, String code, String menit, String detik) {
     screenLock(
       context: context,
       correctString: code,
       title: Text(
-        'Wait till the time is up, you will get the code',
+        'Silahkan tunggu hingga waktu habis untuk mendapatkan kode buka',
         style: subHeaderStyleBoldWhite,
       ),
       onUnlocked: () async {
         setState(() {
           // _isLocked = false;
         });
-        await _releaseForegroundLock();
         Navigator.of(context).pop();
       },
       canCancel: false,
@@ -260,58 +258,153 @@ class TimersState extends State<Timers> {
               borderRadius: BorderRadius.circular(30),
             ),
             child: Text(
-              "There aren't any activities for today",
+              "Tidak ada aktivitas untuk hari ini",
               style: textStyleBold,
               textAlign: TextAlign.center,
             ),
           );
         } else {
-          String? validActivityId = actState.todayActivities
-                  .map((act) => act['id'])
-                  .contains(actState.activityId)
-              ? actState.activityId
+          String? validScheduleId = actState.todayActivities
+                  .map((act) => act.idActivity)
+                  .contains(actState.scheduleId)
+              ? actState.scheduleId
               : null;
 
-          return Container(
-            padding: const EdgeInsets.only(
-              left: 10,
-              right: 10,
-            ),
-            alignment: Alignment.centerLeft,
-            height: 50,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: Colors.grey,
-              ),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: DropdownButton<String>(
-              value: validActivityId,
-              isExpanded: true,
-              hint: Text(
-                "Choose your activity",
-                style: textStyleGrey,
-              ),
-              items: actState.todayActivities.map((act) {
-                return DropdownMenuItem<String>(
-                  value: act['id'],
-                  child: Text(
-                    act['title'],
-                    style: textStyle,
+          return validScheduleId == ""
+              ? Container(
+                  padding: const EdgeInsets.only(
+                    left: 10,
+                    right: 10,
                   ),
+                  alignment: Alignment.centerLeft,
+                  height: 50,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.grey,
+                    ),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: DropdownButton<String>(
+                    value: validScheduleId,
+                    isExpanded: true,
+                    hint: Text(
+                      "Pilih aktivitas kamu",
+                      style: textStyleGrey,
+                    ),
+                    items: actState.todayActivities.map((act) {
+                      return DropdownMenuItem<String>(
+                        value: act.idActivity,
+                        child: Text(
+                          "${act.title} (${act.startTime} - ${act.startTime})",
+                          style: textStyle,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: isDropDownDisable
+                        ? null
+                        : (v) {
+                            setState(() {
+                              actState.selectSchedule(v);
+                            });
+                            actState.getTaskListOfTodayActivities();
+                            actState.getFileListOfTodayActivities();
+                          },
+                  ),
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: Container(
+                        padding: const EdgeInsets.only(
+                          left: 10,
+                          right: 10,
+                        ),
+                        alignment: Alignment.centerLeft,
+                        height: 50,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey,
+                          ),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: DropdownButton<String>(
+                          value: validScheduleId,
+                          isExpanded: true,
+                          hint: Text(
+                            "Pilih aktivitas kamu",
+                            style: textStyleGrey,
+                          ),
+                          items: actState.todayActivities.map((act) {
+                            return DropdownMenuItem<String>(
+                              value: act.idActivity,
+                              child: Text(
+                                "${act.title} (${act.startTime} - ${act.endTime})",
+                                style: textStyle,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: isDropDownDisable
+                              ? null
+                              : (v) {
+                                  setState(() {
+                                    actState.selectSchedule(v);
+                                  });
+                                  actState.getTaskListOfTodayActivities();
+                                  actState.getFileListOfTodayActivities();
+                                },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(
+                      width: 5,
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Selesai?",
+                            style: textStyle,
+                          ),
+                          const SizedBox(
+                            height: 5,
+                          ),
+                          Container(
+                            alignment: Alignment.center,
+                            child: Consumer<ActivityTaskToday>(
+                              builder: (context, actState, child) {
+                                var scheduleId = actState.scheduleId;
+                                var activity = scheduleId == null
+                                    ? null
+                                    : actState.todayActivities.firstWhere(
+                                        (act) =>
+                                            act.idActivity ==
+                                            actState.scheduleId);
+                                return Checkbox(
+                                  value: activity?.status ?? false,
+                                  onChanged: activity == null
+                                      ? null
+                                      : (value) {
+                                          setState(() {
+                                            activity.status = value!;
+                                            actState.updateStatusKegiatans(
+                                                actState.scheduleId!,
+                                                activity.status);
+                                          });
+                                        },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 );
-              }).toList(),
-              onChanged: isDropDownDisable
-                  ? null
-                  : (v) {
-                      setState(() {
-                        actState.selectActivity(v);
-                      });
-                      actState.getTaskListOfTodayActivities();
-                    },
-            ),
-          );
         }
       },
     );
@@ -321,7 +414,7 @@ class TimersState extends State<Timers> {
     return Consumer<ActivityTaskToday>(builder: (context, actState, child) {
       if (actState.tasks.isNotEmpty) {
         return Container(
-          margin: const EdgeInsets.only(top: 25),
+          margin: const EdgeInsets.only(top: 10),
           height: 50,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -355,17 +448,15 @@ class TimersState extends State<Timers> {
                     const SizedBox(
                       width: 5,
                     ),
-                    Expanded(
-                      child: Text(
-                        actState.tasks[index].task,
-                        style: GoogleFonts.poppins(
-                          textStyle: TextStyle(
-                            fontSize: 14,
-                            color: Colors.black,
-                            decoration: actState.tasks[index].status == true
-                                ? TextDecoration.lineThrough
-                                : TextDecoration.none,
-                          ),
+                    Text(
+                      actState.tasks[index].task,
+                      style: GoogleFonts.poppins(
+                        textStyle: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black,
+                          decoration: actState.tasks[index].status == true
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
                         ),
                       ),
                     ),
@@ -377,27 +468,69 @@ class TimersState extends State<Timers> {
         );
       } else {
         return const SizedBox(width: double.infinity);
-        // Container(
-        //   padding: const EdgeInsets.only(
-        //     left: 10,
-        //     right: 10,
-        //   ),
-        //   alignment: Alignment.centerLeft,
-        //   height: 50,
-        //   width: double.infinity,
-        //   decoration: BoxDecoration(
-        //     border: Border.all(
-        //       color: Colors.grey,
-        //       width: 1.0,
-        //     ),
-        //     borderRadius: BorderRadius.circular(30),
-        //   ),
-        //   child: Text(
-        //     "You haven't selected an activity or there are no tasks for your activity",
-        //     style: textStyle,
-        //     textAlign: TextAlign.center,
-        //   ),
-        // );
+      }
+    });
+  }
+
+  Widget formattedListofFile(BuildContext context) {
+    return Consumer<ActivityTaskToday>(builder: (context, actState, child) {
+      if (actState.files.isNotEmpty) {
+        print(actState.files);
+        return Container(
+          margin: const EdgeInsets.only(top: 5),
+          height: 50,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: actState.files.length,
+            itemBuilder: (context, index) {
+              return Container(
+                width: 200,
+                alignment: Alignment.centerLeft,
+                margin: const EdgeInsets.only(right: 5),
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(
+                    color: const Color.fromARGB(255, 3, 0, 66),
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: GestureDetector(
+                  onTap: () {
+                    fileDownloadOpen(
+                        actState.files[index].path, actState.files[index].name);
+                  },
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        flex: 2,
+                        child: Icon(
+                          Icons.file_present_rounded,
+                          color: Colors.black,
+                        ),
+                      ),
+                      Expanded(
+                        flex: 7,
+                        child: Text(
+                          actState.files[index].name,
+                          style: GoogleFonts.poppins(
+                            textStyle: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      } else {
+        return const SizedBox(width: double.infinity);
       }
     });
   }
@@ -412,13 +545,6 @@ class TimersState extends State<Timers> {
         .getListOfTodayActivities();
   }
 
-  // @override
-  // void didChangeDependencies() {
-  //   super.didChangeDependencies();
-  //   Provider.of<ActivityTaskToday>(context, listen: false)
-  //       .getListOfTodayActivities();
-  // }
-
   /* ------------------------------------------------------------------------------------------------------------------- */
 
   @override
@@ -430,396 +556,277 @@ class TimersState extends State<Timers> {
       return GestureDetector(
         onTap: isFullScreen == true ? exitFullScreen : null,
         child: Scaffold(
+          backgroundColor: Colors.white,
           body: isFullScreen == true
               ? SafeArea(
-                  child: Container(
-                    color: const Color.fromARGB(
-                        255, 3, 0, 66), // Set background color
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            tmr.breakSession == true
-                                ? "Time to Break"
-                                : "Let's Focus",
-                            // style: headlineStyleWhite,
-                          ),
-                          const SizedBox(
-                            height: 20,
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.only(
-                                  top: 20,
-                                  left: 10,
-                                  right: 10,
-                                  bottom: 20,
-                                ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    width: 1,
-                                    color: tmr.breakSession == false
-                                        ? const Color.fromARGB(255, 255, 170, 0)
-                                        : const Color.fromARGB(255, 3, 0, 66),
-                                  ),
-                                  color: tmr.breakSession == false
-                                      ? const Color.fromARGB(255, 255, 170, 0)
-                                      : Colors.white,
-                                ),
-                                child: Text(
-                                  minutesStr,
-                                  style: TextStyle(
-                                    fontSize: 110,
-                                    fontWeight: FontWeight.bold,
-                                    color: tmr.breakSession == false
-                                        ? const Color.fromARGB(255, 3, 0, 66)
-                                        : const Color.fromARGB(255, 3, 0, 66),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(
-                                width: 5,
-                              ),
-                              const Text(
-                                ":",
-                                style: TextStyle(
-                                  fontSize: 45,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color.fromARGB(255, 255, 170, 0),
-                                ),
-                              ),
-                              const SizedBox(
-                                width: 5,
-                              ),
-                              Container(
-                                padding: const EdgeInsets.only(
-                                  top: 20,
-                                  left: 10,
-                                  right: 10,
-                                  bottom: 20,
-                                ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    width: 1,
-                                    color: tmr.breakSession == false
-                                        ? const Color.fromARGB(255, 255, 170, 0)
-                                        : const Color.fromARGB(255, 3, 0, 66),
-                                  ),
-                                  color: tmr.breakSession == false
-                                      ? const Color.fromARGB(255, 255, 170, 0)
-                                      : Colors.white,
-                                ),
-                                child: Text(
-                                  secondsStr,
-                                  style: TextStyle(
-                                    fontSize: 110,
-                                    fontWeight: FontWeight.bold,
-                                    color: tmr.breakSession == false
-                                        ? const Color.fromARGB(255, 3, 0, 66)
-                                        : const Color.fromARGB(255, 3, 0, 66),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                )
-              : Container(
-                  width: double.infinity,
-                  height: double.infinity,
-                  margin: const EdgeInsets.only(
-                    top: 40,
-                    left: 20,
-                    right: 20,
-                    bottom: 40,
-                  ),
-                  child: Column(
-                    children: [
-                      formattedActivityOption(context),
-                      formattedListofTask(context),
-                      Container(
-                        margin: const EdgeInsets.only(top: 50),
-                        width: double.infinity,
-                        child: Text(
-                          tmr.breakSession == true
-                              ? "Time to Break"
-                              : "Let's Focus",
-                          style: screenTitleStyle,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      Container(
-                        margin: const EdgeInsets.only(
-                          top: 10,
-                          bottom: 100,
-                        ),
-                        width: double.infinity,
-                        child: Row(
+                  child: LayoutBuilder(builder: (context, constraints) {
+                    return Container(
+                      color: tmr.breakSession == false
+                          ? const Color.fromARGB(255, 3, 0, 66)
+                          : Colors.white, // Set background color
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.only(
-                                top: 10,
-                                left: 10,
-                                right: 10,
-                                bottom: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(15),
-                                border: Border.all(
-                                  width: 1,
-                                  color: tmr.breakSession == false
-                                      ? Colors.white
-                                      : const Color.fromARGB(255, 3, 0, 66),
-                                ),
-                                color: tmr.breakSession == false
-                                    ? const Color.fromARGB(255, 3, 0, 66)
-                                    : Colors.white,
-                              ),
-                              child: Text(
-                                minutesStr,
-                                style: TextStyle(
-                                  fontSize: 130,
-                                  fontWeight: FontWeight.bold,
-                                  color: tmr.breakSession == false
-                                      ? Colors.white
-                                      : const Color.fromARGB(255, 3, 0, 66),
-                                ),
-                              ),
+                            Text(
+                              tmr.breakSession == true
+                                  ? "Waktunya Istirahat"
+                                  : "Ayo Fokus",
+                              style: tmr.breakSession == true
+                                  ? headerStyleBold
+                                  : headerStyleBoldWhite,
                             ),
                             const SizedBox(
-                              width: 5,
+                              height: 20,
                             ),
-                            const Text(
-                              ":",
-                              style: TextStyle(
-                                fontSize: 45,
-                                fontWeight: FontWeight.bold,
-                                color: Color.fromARGB(255, 3, 0, 66),
-                              ),
-                            ),
-                            const SizedBox(
-                              width: 5,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.only(
-                                top: 10,
-                                left: 10,
-                                right: 10,
-                                bottom: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(15),
-                                border: Border.all(
-                                  width: 1,
-                                  color: tmr.breakSession == false
-                                      ? Colors.white
-                                      : const Color.fromARGB(255, 3, 0, 66),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                    top: 20,
+                                    left: 10,
+                                    right: 10,
+                                    bottom: 20,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: tmr.breakSession == false
+                                        ? Colors.white
+                                        : const Color.fromARGB(255, 3, 0, 66),
+                                  ),
+                                  child: Text(
+                                    minutesStr,
+                                    style: TextStyle(
+                                      fontSize: 130,
+                                      fontWeight: FontWeight.bold,
+                                      color: tmr.breakSession == false
+                                          ? const Color.fromARGB(255, 3, 0, 66)
+                                          : Colors.white,
+                                    ),
+                                  ),
                                 ),
-                                color: tmr.breakSession == false
-                                    ? const Color.fromARGB(255, 3, 0, 66)
-                                    : Colors.white,
-                              ),
-                              child: Text(
-                                secondsStr,
-                                style: TextStyle(
-                                  fontSize: 130,
-                                  fontWeight: FontWeight.bold,
-                                  color: tmr.breakSession == false
-                                      ? Colors.white
-                                      : const Color.fromARGB(255, 3, 0, 66),
+                                const SizedBox(
+                                  width: 5,
                                 ),
-                              ),
+                                Text(
+                                  ":",
+                                  style: TextStyle(
+                                    fontSize: 45,
+                                    fontWeight: FontWeight.bold,
+                                    color: tmr.breakSession == false
+                                        ? Colors.white
+                                        : const Color.fromARGB(255, 3, 0, 66),
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 5,
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                    top: 20,
+                                    left: 10,
+                                    right: 10,
+                                    bottom: 20,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: tmr.breakSession == false
+                                        ? Colors.white
+                                        : const Color.fromARGB(255, 3, 0, 66),
+                                  ),
+                                  child: Text(
+                                    secondsStr,
+                                    style: TextStyle(
+                                      fontSize: 130,
+                                      fontWeight: FontWeight.bold,
+                                      color: tmr.breakSession == false
+                                          ? const Color.fromARGB(255, 3, 0, 66)
+                                          : Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            if (tmr.running == true) {
-                              tmr.pauseTimer(context);
-                            } else {
-                              if (act.activityId != null) {
-                                if (tmr.isStart == false) {
-                                  if (tmr.breakSession == false) {
-                                    tmr.isLocked = isLocked;
-                                    tmr.startTimer(context);
-                                    isDropDownDisable = tmr.isDropDownDisable;
-                                    if (isLocked == true) {
-                                      _showLockScreen(tmr.code ?? "1234");
-                                    }
-                                  } else {
-                                    tmr.startTimer(context);
-                                    isDropDownDisable = tmr.isDropDownDisable;
-                                  }
+                    );
+                  }),
+                )
+              : SafeArea(
+                  child: LayoutBuilder(builder: (context, constraints) {
+                    return Container(
+                      width: constraints.maxWidth,
+                      height: constraints.maxHeight,
+                      margin: const EdgeInsets.only(
+                        top: 10,
+                        left: 20,
+                        right: 20,
+                        bottom: 20,
+                      ),
+                      child: Column(
+                        children: [
+                          formattedActivityOption(context),
+                          formattedListofTask(context),
+                          formattedListofFile(context),
+                          Container(
+                            margin: const EdgeInsets.only(top: 10),
+                            width: constraints.maxWidth,
+                            child: Text(
+                              tmr.breakSession == true
+                                  ? "Waktunya Istirahat"
+                                  : "Ayo Fokus",
+                              style: screenTitleStyle,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          Container(
+                            margin: const EdgeInsets.only(
+                              top: 10,
+                              bottom: 50,
+                            ),
+                            width: constraints.maxWidth,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                    top: 10,
+                                    left: 10,
+                                    right: 10,
+                                    bottom: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(15),
+                                    border: Border.all(
+                                      width: 1,
+                                      color: tmr.breakSession == false
+                                          ? Colors.white
+                                          : const Color.fromARGB(255, 3, 0, 66),
+                                    ),
+                                    color: tmr.breakSession == false
+                                        ? const Color.fromARGB(255, 3, 0, 66)
+                                        : Colors.white,
+                                  ),
+                                  child: Text(
+                                    minutesStr,
+                                    style: TextStyle(
+                                      fontSize: 130,
+                                      fontWeight: FontWeight.bold,
+                                      color: tmr.breakSession == false
+                                          ? Colors.white
+                                          : const Color.fromARGB(255, 3, 0, 66),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 5,
+                                ),
+                                const Text(
+                                  ":",
+                                  style: TextStyle(
+                                    fontSize: 45,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color.fromARGB(255, 3, 0, 66),
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 5,
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                    top: 10,
+                                    left: 10,
+                                    right: 10,
+                                    bottom: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(15),
+                                    border: Border.all(
+                                      width: 1,
+                                      color: tmr.breakSession == false
+                                          ? Colors.white
+                                          : const Color.fromARGB(255, 3, 0, 66),
+                                    ),
+                                    color: tmr.breakSession == false
+                                        ? const Color.fromARGB(255, 3, 0, 66)
+                                        : Colors.white,
+                                  ),
+                                  child: Text(
+                                    secondsStr,
+                                    style: TextStyle(
+                                      fontSize: 130,
+                                      fontWeight: FontWeight.bold,
+                                      color: tmr.breakSession == false
+                                          ? Colors.white
+                                          : const Color.fromARGB(255, 3, 0, 66),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () async {
+                              setState(() {
+                                if (tmr.running == true) {
+                                  tmr.pauseTimer(context);
                                 } else {
-                                  if (tmr.breakSession == false) {
-                                    tmr.isLocked = isLocked;
-                                    tmr.resumeTimer(context);
-                                    if (isLocked == true) {
-                                      _showLockScreen(tmr.code ?? "1234");
+                                  if (act.scheduleId != null) {
+                                    if (tmr.isStart == false) {
+                                      if (tmr.breakSession == false) {
+                                        tmr.isLocked = isLocked;
+                                        tmr.generateRandomScreenCode();
+                                        if (isLocked == true) {
+                                          _showLockScreen(
+                                              context,
+                                              tmr.code ?? "1234",
+                                              minutesStr,
+                                              secondsStr);
+                                        }
+                                        tmr.startTimer(context);
+                                        isDropDownDisable =
+                                            tmr.isDropDownDisable;
+                                      } else {
+                                        tmr.startTimer(context);
+                                        isDropDownDisable =
+                                            tmr.isDropDownDisable;
+                                      }
+                                    } else {
+                                      if (tmr.breakSession == false) {
+                                        tmr.isLocked = isLocked;
+                                        tmr.generateRandomScreenCode();
+                                        if (isLocked == true) {
+                                          _showLockScreen(
+                                              context,
+                                              tmr.code ?? "1234",
+                                              minutesStr,
+                                              secondsStr);
+                                        }
+                                        tmr.resumeTimer(context);
+                                      } else {
+                                        tmr.resumeTimer(context);
+                                      }
                                     }
                                   } else {
-                                    tmr.resumeTimer(context);
+                                    AlertInformation.showDialogBox(
+                                      context: context,
+                                      title: "Timer Tidak Dapat Dimulai",
+                                      message:
+                                          "Silahkan menambah aktivitasmu untuk dapat menggunakan timer.",
+                                    );
                                   }
                                 }
-                              } else {
-                                showInfoDialog(
-                                  "Cannot Start the Timer",
-                                  "Please add any activity for today, to use the timer.",
-                                );
-                              }
-                            }
-                          });
-                        },
-                        child: tmr.running == true
-                            ? Container(
-                                alignment: Alignment.center,
-                                width: double.infinity,
-                                margin: const EdgeInsets.only(
-                                  left: 80,
-                                  right: 80,
-                                ),
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(30),
-                                  border: Border.all(
-                                    color: const Color.fromARGB(255, 3, 0, 66),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.pause,
-                                      color: Colors.black,
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Text(
-                                      'Pause',
-                                      style: textStyleBold,
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : act.activityId != null
-                                ? tmr.isStart == false
-                                    ? Container(
-                                        alignment: Alignment.center,
-                                        width: double.infinity,
-                                        margin: const EdgeInsets.only(
-                                          left: 80,
-                                          right: 80,
-                                        ),
-                                        height: 50,
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(30),
-                                          color: const Color.fromARGB(
-                                              255, 3, 0, 66),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.play_arrow,
-                                              color: Colors.white,
-                                            ),
-                                            const SizedBox(width: 5),
-                                            Text(
-                                              'Start',
-                                              style: textStyleBoldWhite,
-                                            ),
-                                          ],
-                                        ),
-                                      )
-                                    : Container(
-                                        alignment: Alignment.center,
-                                        width: double.infinity,
-                                        margin: const EdgeInsets.only(
-                                          left: 80,
-                                          right: 80,
-                                        ),
-                                        height: 50,
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(30),
-                                          color: const Color.fromARGB(
-                                              255, 3, 0, 66),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.play_arrow,
-                                              color: Colors.white,
-                                            ),
-                                            const SizedBox(width: 5),
-                                            Text(
-                                              'Resume',
-                                              style: textStyleBoldWhite,
-                                            ),
-                                          ],
-                                        ),
-                                      )
-                                : Container(
+                              });
+                            },
+                            child: tmr.running == true
+                                ? Container(
                                     alignment: Alignment.center,
-                                    width: double.infinity,
+                                    width: constraints.maxWidth,
                                     margin: const EdgeInsets.only(
-                                      left: 80,
-                                      right: 80,
-                                    ),
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(30),
-                                      color:
-                                          const Color.fromARGB(255, 3, 0, 66),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.play_arrow,
-                                          color: Colors.white,
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          'Start',
-                                          style: textStyleBoldWhite,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            if (tmr.running == false) {
-                              tmr.resetTimer();
-                              isDropDownDisable = tmr.isDropDownDisable;
-                            }
-                          });
-                        },
-                        child: tmr.running == true
-                            ? const SizedBox(width: double.infinity)
-                            : tmr.isStart == false
-                                ? const SizedBox(width: double.infinity)
-                                : Container(
-                                    alignment: Alignment.center,
-                                    width: double.infinity,
-                                    margin: const EdgeInsets.only(
-                                      top: 10,
                                       left: 80,
                                       right: 80,
                                     ),
@@ -835,156 +842,304 @@ class TimersState extends State<Timers> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         const Icon(
-                                          Icons.replay,
+                                          Icons.pause,
                                           color: Colors.black,
                                         ),
                                         const SizedBox(width: 5),
                                         Text(
-                                          'Reset',
+                                          'Jeda',
                                           style: textStyleBold,
                                         ),
                                       ],
                                     ),
-                                  ),
-                      ),
-                      Expanded(child: Container()),
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: act.activityId != null
-                                ? [
-                                    GestureDetector(
-                                      onTap: tmr.breakSession == true
-                                          ? () {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                      "Can't locked the app when Break Session."),
+                                  )
+                                : act.scheduleId != null
+                                    ? tmr.isStart == false
+                                        ? Container(
+                                            alignment: Alignment.center,
+                                            width: constraints.maxWidth,
+                                            margin: const EdgeInsets.only(
+                                              left: 80,
+                                              right: 80,
+                                            ),
+                                            height: 50,
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(30),
+                                              color: const Color.fromARGB(
+                                                  255, 3, 0, 66),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.play_arrow,
+                                                  color: Colors.white,
                                                 ),
-                                              );
-                                            }
-                                          : () {
-                                              showLockedChoice(context);
-                                            },
-                                      child: Column(
-                                        children: [
-                                          const Icon(
-                                            Icons.info,
-                                            color: Colors.black,
-                                          ),
-                                          Text(
-                                            "Lock Phone",
-                                            style: textStyle,
-                                          ),
-                                        ],
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  'Mulai',
+                                                  style: textStyleBoldWhite,
+                                                ),
+                                              ],
+                                            ),
+                                          )
+                                        : Container(
+                                            alignment: Alignment.center,
+                                            width: constraints.maxWidth,
+                                            margin: const EdgeInsets.only(
+                                              left: 80,
+                                              right: 80,
+                                            ),
+                                            height: 50,
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(30),
+                                              color: const Color.fromARGB(
+                                                  255, 3, 0, 66),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.play_arrow,
+                                                  color: Colors.white,
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  'Lanjutkan',
+                                                  style: textStyleBoldWhite,
+                                                ),
+                                              ],
+                                            ),
+                                          )
+                                    : Container(
+                                        alignment: Alignment.center,
+                                        width: constraints.maxWidth,
+                                        margin: const EdgeInsets.only(
+                                          left: 80,
+                                          right: 80,
+                                        ),
+                                        height: 50,
+                                        decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(30),
+                                          color: const Color.fromARGB(
+                                              255, 3, 0, 66),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.play_arrow,
+                                              color: Colors.white,
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              'Mulai',
+                                              style: textStyleBoldWhite,
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        showTimerPicker(context);
-                                      },
-                                      child: Column(
-                                        children: [
-                                          const Icon(
-                                            Icons.timer,
-                                            color: Colors.black,
-                                          ),
-                                          Text(
-                                            "Set a Timer",
-                                            style: textStyle,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        enterFullScreen();
-                                      },
-                                      child: Column(
-                                        children: [
-                                          const Icon(
-                                            Icons.fullscreen,
-                                            color: Colors.black,
-                                          ),
-                                          Text(
-                                            "Full Screen",
-                                            style: textStyle,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ]
-                                : [
-                                    GestureDetector(
-                                      onTap: () {
-                                        showInfoDialog(
-                                          "Cannot Start the Timer",
-                                          "Please add any activity for today, to use this timer feature.",
-                                        );
-                                      },
-                                      child: Column(
-                                        children: [
-                                          const Icon(
-                                            Icons.info,
-                                            color: Colors.grey,
-                                          ),
-                                          Text(
-                                            "Lock Phone",
-                                            style: textStyleGrey,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        showInfoDialog(
-                                          "Cannot Start the Timer",
-                                          "Please add any activity for today, to use this timer feature.",
-                                        );
-                                      },
-                                      child: Column(
-                                        children: [
-                                          const Icon(
-                                            Icons.timer,
-                                            color: Colors.grey,
-                                          ),
-                                          Text(
-                                            "Set a Timer",
-                                            style: textStyleGrey,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        showInfoDialog(
-                                          "Cannot Start the Timer",
-                                          "Please add any activity for today, to use this timer feature.",
-                                        );
-                                      },
-                                      child: Column(
-                                        children: [
-                                          const Icon(
-                                            Icons.fullscreen,
-                                            color: Colors.grey,
-                                          ),
-                                          Text(
-                                            "Full Screen",
-                                            style: textStyleGrey,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
                           ),
-                        ),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (tmr.running == false) {
+                                  tmr.resetTimer();
+                                  isDropDownDisable = tmr.isDropDownDisable;
+                                }
+                              });
+                            },
+                            child: tmr.running == true
+                                ? SizedBox(width: constraints.maxWidth)
+                                : tmr.isStart == false
+                                    ? SizedBox(width: constraints.maxWidth)
+                                    : Container(
+                                        alignment: Alignment.center,
+                                        width: constraints.maxWidth,
+                                        margin: const EdgeInsets.only(
+                                          top: 10,
+                                          left: 80,
+                                          right: 80,
+                                        ),
+                                        height: 50,
+                                        decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(30),
+                                          border: Border.all(
+                                            color: const Color.fromARGB(
+                                                255, 3, 0, 66),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.replay,
+                                              color: Colors.black,
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              'Reset',
+                                              style: textStyleBold,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                          ),
+                          Expanded(child: Container()),
+                          Align(
+                            alignment: Alignment.bottomCenter,
+                            child: SizedBox(
+                              width: constraints.maxWidth,
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
+                                children: act.scheduleId != null
+                                    ? [
+                                        GestureDetector(
+                                          onTap: tmr.breakSession == true
+                                              ? () {
+                                                  AlertInformation
+                                                      .showDialogBox(
+                                                    context: context,
+                                                    title:
+                                                        "Fitur Tidak Dapat Digunakan",
+                                                    message:
+                                                        "Kamu tidak dapat menggunakan fitur ini ketika sedang istirahat. Terima kasih.",
+                                                  );
+                                                }
+                                              : () {
+                                                  showLockedChoice(context);
+                                                },
+                                          child: Column(
+                                            children: [
+                                              const Icon(
+                                                Icons.info,
+                                                color: Colors.black,
+                                              ),
+                                              Text(
+                                                "Mode Ketat",
+                                                style: textStyle,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        GestureDetector(
+                                          onTap: () {
+                                            showTimerPicker(context);
+                                          },
+                                          child: Column(
+                                            children: [
+                                              const Icon(
+                                                Icons.timer,
+                                                color: Colors.black,
+                                              ),
+                                              Text(
+                                                "Atur Timer",
+                                                style: textStyle,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        GestureDetector(
+                                          onTap: () {
+                                            enterFullScreen();
+                                          },
+                                          child: Column(
+                                            children: [
+                                              const Icon(
+                                                Icons.fullscreen,
+                                                color: Colors.black,
+                                              ),
+                                              Text(
+                                                "Layar Penuh",
+                                                style: textStyle,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ]
+                                    : [
+                                        GestureDetector(
+                                          onTap: () {
+                                            AlertInformation.showDialogBox(
+                                              context: context,
+                                              title:
+                                                  "Timer Tidak Dapat Dimulai",
+                                              message:
+                                                  "Silahkan menambah aktivitasmu untuk dapat menggunakan timer.",
+                                            );
+                                          },
+                                          child: Column(
+                                            children: [
+                                              const Icon(
+                                                Icons.info,
+                                                color: Colors.grey,
+                                              ),
+                                              Text(
+                                                "Mode Ketat",
+                                                style: textStyleGrey,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        GestureDetector(
+                                          onTap: () {
+                                            AlertInformation.showDialogBox(
+                                              context: context,
+                                              title:
+                                                  "Timer Tidak Dapat Dimulai",
+                                              message:
+                                                  "Silahkan menambah aktivitasmu untuk dapat menggunakan timer.",
+                                            );
+                                          },
+                                          child: Column(
+                                            children: [
+                                              const Icon(
+                                                Icons.timer,
+                                                color: Colors.grey,
+                                              ),
+                                              Text(
+                                                "Atur Timer",
+                                                style: textStyleGrey,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        GestureDetector(
+                                          onTap: () {
+                                            AlertInformation.showDialogBox(
+                                              context: context,
+                                              title:
+                                                  "Timer Tidak Dapat Dimulai",
+                                              message:
+                                                  "Silahkan menambah aktivitasmu untuk dapat menggunakan timer.",
+                                            );
+                                          },
+                                          child: Column(
+                                            children: [
+                                              const Icon(
+                                                Icons.fullscreen,
+                                                color: Colors.grey,
+                                              ),
+                                              Text(
+                                                "Layar Penuh",
+                                                style: textStyleGrey,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    );
+                  }),
                 ),
         ),
       );

@@ -45,9 +45,11 @@ class MyInputFile extends StatelessWidget {
           ),
           child: GestureDetector(
             onTap: onTapFunct,
-            child: Text(
-              "Click here to $placeholder",
-              style: textStyle,
+            child: Expanded(
+              child: Text(
+                placeholder,
+                style: textStyle,
+              ),
             ),
           ),
         ),

@@ -9,12 +9,14 @@ class AddActivityList {
   String? impType;
   String? urgType;
   String date;
-  String? strTime;
+  DateTime? strTime;
+  DateTime? endTime;
   int duration;
   List<Tasks>? tasks;
   String? cat;
   String? rptIntv;
   int? rptDur;
+  bool isFixed;
   List<Notifications>? notif;
   List<Locations>? locations;
   List<Files>? files;
@@ -25,7 +27,9 @@ class AddActivityList {
     required this.impType,
     required this.urgType,
     required this.date,
+    required this.isFixed,
     this.strTime,
+    this.endTime,
     required this.duration,
     this.tasks,
     this.cat,
@@ -38,7 +42,7 @@ class AddActivityList {
 
   @override
   String toString() {
-    return '{"title": $title, "important_type": $impType, "urgent_type": $urgType, "date": $date, "start_time": $strTime, "duration": $duration, "task": $tasks, "category": $cat, "repeat_interval": $rptIntv, "repeat_duration": $rptDur, "notification": $notif, "location": $locations, "files": $files}';
+    return '{"title": $title, "important_type": $impType, "urgent_type": $urgType, "isFixed:" $isFixed, "date": $date, "start_time": $strTime, "duration": $duration, "task": $tasks, "category": $cat, "repeat_interval": $rptIntv, "repeat_duration": $rptDur, "notification": $notif, "location": $locations, "files": $files}';
   }
 
   // factory AddActivityList.fromJson(Map<String, dynamic> json) {

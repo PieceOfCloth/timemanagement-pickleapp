@@ -38,7 +38,6 @@ class _HomeState extends State<Home> {
   late List<DateTime> activeDates;
 
   String message = "";
-  String scheduledID = "";
 
   List<ActivityList> actList = [];
   ActivityList? aLS2;
@@ -95,11 +94,11 @@ class _HomeState extends State<Home> {
 
   // Image for priority type to use it in containers
   String getPriorityImage(important, urgent) {
-    if (important == "Important" && urgent == "Urgent") {
+    if (important == "Penting" && urgent == "Mendesak") {
       return 'assets/golfBall_1.png';
-    } else if (important == "Important" && urgent == "Not Urgent") {
+    } else if (important == "Penting" && urgent == "Tidak Mendesak") {
       return 'assets/pebbles_1.png';
-    } else if (important == "Not Important" && urgent == "Urgent") {
+    } else if (important == "Tidak Penting" && urgent == "Mendesak") {
       return 'assets/sand_1.png';
     } else {
       return 'assets/water_1.png';
@@ -108,11 +107,11 @@ class _HomeState extends State<Home> {
 
   // For determine priority high medium or so on
   String getPriorityTypeOnly(important, urgent) {
-    if (important == "Important" && urgent == "Urgent") {
+    if (important == "Penting" && urgent == "Mendesak") {
       return "Utama";
-    } else if (important == "Important" && urgent == "Not Urgent") {
+    } else if (important == "Penting" && urgent == "Tidak Mendesak") {
       return "Tinggi";
-    } else if (important == "Not Important" && urgent == "Urgent") {
+    } else if (important == "Tidak Penting" && urgent == "Mendesak") {
       return "Sedang";
     } else {
       return "Rendah";
@@ -123,7 +122,7 @@ class _HomeState extends State<Home> {
     if (priorityType == "Utama") {
       return Colors.red;
     } else if (priorityType == "Tinggi") {
-      return Colors.yellow;
+      return Colors.brown;
     } else if (priorityType == "Sedang") {
       return Colors.green;
     } else {
@@ -166,104 +165,83 @@ class _HomeState extends State<Home> {
         Timestamp.fromDate(dateTime.add(const Duration(days: 1)));
 
     QuerySnapshot schSnap = await FirebaseFirestore.instance
-        .collection('scheduled_activities')
-        .where('actual_start_time', isGreaterThanOrEqualTo: startOfDay)
-        .where('actual_start_time', isLessThan: endOfDay)
+        .collection('kegiatans')
+        .where('waktu_mulai', isGreaterThanOrEqualTo: startOfDay)
+        .where('waktu_mulai', isLessThan: endOfDay)
         .get();
-
-    for (QueryDocumentSnapshot scheduleDoc in schSnap.docs) {
-      Map<String, dynamic>? scheduleData =
-          scheduleDoc.data() as Map<String, dynamic>?;
-
-      String? activityId;
-
-      if (scheduleData != null) {
-        activityId = scheduleData['activities_id'] as String?;
-      }
-
-      Timestamp? actualStartTimeTimestamp =
-          scheduleData?['actual_start_time'] as Timestamp?;
-
-      DateTime? actualStartTime = actualStartTimeTimestamp?.toDate();
-
-      String? actualStartTimeString;
-      if (actualStartTime != null) {
-        actualStartTimeString = actualStartTime.toString();
-      }
-
-      Timestamp? actualEndTimeTimestamp =
-          scheduleData?['actual_end_time'] as Timestamp?;
-
-      DateTime? actualEndTime = actualEndTimeTimestamp?.toDate();
-
-      String? actualEndTimeString;
-      if (actualEndTime != null) {
-        actualEndTimeString = actualEndTime.toString();
-      }
-
-      // print("test 1: $actualStartTimeString");
-
-      if (activityId != null) {
-        // print("test 2: $activityId");
+    if (schSnap.docs.isNotEmpty) {
+      for (var scheduleDoc in schSnap.docs) {
+        var schedID = scheduleDoc.id;
         QuerySnapshot activityQuerySnapshot = await FirebaseFirestore.instance
-            .collection('activities')
-            .where(FieldPath.documentId, isEqualTo: activityId)
-            .where('user_id', isEqualTo: userID)
+            .collection('kegiatans')
+            .where('users_id', isEqualTo: userID)
+            .where(FieldPath.documentId, isEqualTo: schedID)
             .get();
 
         if (activityQuerySnapshot.docs.isNotEmpty) {
-          DocumentSnapshot activityDoc = activityQuerySnapshot.docs.first;
-          Map<String, dynamic> activityData =
-              activityDoc.data() as Map<String, dynamic>;
+          for (var actDoc in activityQuerySnapshot.docs) {
+            // DocumentSnapshot activityDoc = activityQuerySnapshot.docs.first;
+            // Map<String, dynamic> activityData =
+            //     activityDoc.data() as Map<String, dynamic>;
+            var actID = actDoc.id;
 
-          QuerySnapshot locQuerySnapshot = await FirebaseFirestore.instance
-              .collection('locations')
-              .where('activities_id', isEqualTo: activityId)
-              .get();
+            Timestamp actualStartTimeTimestamp =
+                actDoc['waktu_mulai'] as Timestamp;
 
-          List<Locations> locations = locQuerySnapshot.docs.map((locDoc) {
-            Map<String, dynamic> locData =
-                locDoc.data() as Map<String, dynamic>;
-            return Locations(
-              address: locData['address'] as String,
-              latitude: locData['latitude'] as double,
-              longitude: locData['longitude'] as double,
-            );
-          }).toList();
+            DateTime actualStartTime = actualStartTimeTimestamp.toDate();
 
-          String? categoriesId = activityData['categories_id'] as String?;
-          Map<String, dynamic>? categoryData;
+            String actualStartTimeString = actualStartTime.toString();
 
-          if (categoriesId != null && categoriesId.isNotEmpty) {
-            DocumentSnapshot categoryDoc = await FirebaseFirestore.instance
-                .collection('categories')
-                .doc(categoriesId)
+            Timestamp actualEndTimeTimestamp =
+                actDoc['waktu_akhir'] as Timestamp;
+
+            DateTime actualEndTime = actualEndTimeTimestamp.toDate();
+
+            String? actualEndTimeString = actualEndTime.toString();
+
+            QuerySnapshot locQuerySnapshot = await FirebaseFirestore.instance
+                .collection('lokasis')
+                .where('kegiatans_id', isEqualTo: actID)
                 .get();
-            categoryData = categoryDoc.data() as Map<String, dynamic>?;
+
+            List<Locations> locations = locQuerySnapshot.docs.map((locDoc) {
+              Map<String, dynamic> locData =
+                  locDoc.data() as Map<String, dynamic>;
+              return Locations(
+                address: locData['alamat'] as String,
+                latitude: locData['latitude'] as double,
+                longitude: locData['longitude'] as double,
+              );
+            }).toList();
+
+            DocumentSnapshot categoryDoc = await FirebaseFirestore.instance
+                .collection('kategoris')
+                .doc(actDoc['kategoris_id'])
+                .get();
+
+            Map<String, dynamic> catDoc =
+                categoryDoc.data() as Map<String, dynamic>;
+
+            ActivityList activity = ActivityList(
+              idActivity: actID,
+              title: actDoc['nama'],
+              startTime: actualStartTimeString,
+              endTime: actualEndTimeString,
+              importantType: actDoc['tipe_kepentingan'],
+              urgentType: actDoc['tipe_mendesak'],
+              colorA: catDoc['warna_a'] as int,
+              colorR: catDoc['warna_r'] as int,
+              colorG: catDoc['warna_g'] as int,
+              colorB: catDoc['warna_b'] as int,
+              locations: locations,
+            );
+
+            activitiesList.add(activity);
           }
-
-          ActivityList activity = ActivityList(
-            idActivity: activityId,
-            idScheduled: scheduleDoc.id,
-            title: activityData['title'] as String,
-            startTime: actualStartTimeString!,
-            endTime: actualEndTimeString!,
-            importantType: activityData['important_type'] as String,
-            urgentType: activityData['urgent_type'] as String,
-            colorA: categoryData != null ? categoryData['color_a'] as int : 0,
-            colorR: categoryData != null ? categoryData['color_r'] as int : 0,
-            colorG: categoryData != null ? categoryData['color_g'] as int : 0,
-            colorB: categoryData != null ? categoryData['color_b'] as int : 0,
-            locations: locations,
-          );
-
-          activitiesList.add(activity);
-          // print("Activity List: $activitiesList");
         }
-      } else {
-        // print('Test');
       }
     }
+    activitiesList.sort((a, b) => a.startTime.compareTo(b.startTime));
     return activitiesList;
   }
 
@@ -293,25 +271,25 @@ class _HomeState extends State<Home> {
         Timestamp.fromDate(dateTime.add(const Duration(days: 1)));
 
     final schedSnap = await FirebaseFirestore.instance
-        .collection("scheduled_activities")
-        .where("actual_start_time", isGreaterThanOrEqualTo: startOfDay)
-        .where("actual_start_time", isLessThan: endOfDay)
+        .collection("kegiatans")
+        .where("waktu_mulai", isGreaterThanOrEqualTo: startOfDay)
+        .where("waktu_mulai", isLessThan: endOfDay)
         .get();
 
     Map<String, int> totalPriority = {};
 
     for (var doc in schedSnap.docs) {
-      String activityId = doc["activities_id"];
+      String activityId = doc.id;
 
       DocumentSnapshot actSnap = await FirebaseFirestore.instance
-          .collection("activities")
+          .collection("kegiatans")
           .doc(activityId)
           .get();
 
       Map<String, dynamic> actData = actSnap.data() as Map<String, dynamic>;
-      if (actData['user_id'] == userID) {
+      if (actData['users_id'] == userID) {
         String priorityType = getPriorityTypeOnly(
-            actData["important_type"], actData["urgent_type"]);
+            actData["tipe_kepentingan"], actData["tipe_mendesak"]);
 
         if (totalPriority.containsKey(priorityType)) {
           totalPriority[priorityType] = totalPriority[priorityType]! + 1;
@@ -323,8 +301,7 @@ class _HomeState extends State<Home> {
     return totalPriority;
   }
 
-  Future<void> deleteScheduledActivity(
-      String scheduleID, String activityID) async {
+  Future<void> deleteScheduledActivity(String activityID) async {
     try {
       showDialog(
         context: context,
@@ -333,120 +310,98 @@ class _HomeState extends State<Home> {
         },
       );
 
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('scheduled_activities')
-          .where('activities_id', isEqualTo: activityID)
-          .get();
-
-      int count = querySnapshot.docs.length;
-
-      DocumentReference schedRef = FirebaseFirestore.instance
-          .collection('scheduled_activities')
-          .doc(scheduleID);
-
       DocumentReference actRef =
-          FirebaseFirestore.instance.collection('activities').doc(activityID);
+          FirebaseFirestore.instance.collection('kegiatans').doc(activityID);
 
-      DocumentSnapshot schedSnap = await schedRef.get();
+      DocumentSnapshot schedSnap = await actRef.get();
 
-      if (schedSnap.exists && schedSnap['activities_id'] == activityID) {
-        if (count == 1) {
-          await actRef.delete();
-          await schedRef.delete();
+      if (schedSnap.exists && schedSnap.id == activityID) {
+        await actRef.delete();
 
-          QuerySnapshot taskSnap = await FirebaseFirestore.instance
-              .collection('tasks')
-              .where('activities_id', isEqualTo: activityID)
-              .get();
+        QuerySnapshot taskSnap = await FirebaseFirestore.instance
+            .collection('subtugass')
+            .where('kegiatans_id', isEqualTo: activityID)
+            .get();
 
-          for (DocumentSnapshot doc in taskSnap.docs) {
-            await FirebaseFirestore.instance
-                .collection('tasks')
-                .doc(doc.id)
-                .delete();
-          }
-
-          QuerySnapshot notifSnap = await FirebaseFirestore.instance
-              .collection('notifications')
-              .where('scheduled_activities_id', isEqualTo: scheduleID)
-              .get();
-
-          for (DocumentSnapshot doc in notifSnap.docs) {
-            await FirebaseFirestore.instance
-                .collection('notifications')
-                .doc(doc.id)
-                .delete();
-            await AwesomeNotifications().cancel(doc.id.hashCode);
-          }
-
-          QuerySnapshot logSnap = await FirebaseFirestore.instance
-              .collection('logs')
-              .where('activities_id', isEqualTo: activityID)
-              .get();
-
-          for (DocumentSnapshot doc in logSnap.docs) {
-            await FirebaseFirestore.instance
-                .collection('logs')
-                .doc(doc.id)
-                .delete();
-          }
-
-          QuerySnapshot locSnap = await FirebaseFirestore.instance
-              .collection('locations')
-              .where('activities_id', isEqualTo: activityID)
-              .get();
-
-          for (DocumentSnapshot doc in locSnap.docs) {
-            await FirebaseFirestore.instance
-                .collection('locations')
-                .doc(doc.id)
-                .delete();
-          }
-
-          QuerySnapshot fileSnap = await FirebaseFirestore.instance
-              .collection('files')
-              .where('activities_id', isEqualTo: activityID)
-              .get();
-
-          for (DocumentSnapshot doc in fileSnap.docs) {
-            await FirebaseStorage.instance.ref(doc['path']).delete();
-
-            await FirebaseFirestore.instance
-                .collection('files')
-                .doc(doc.id)
-                .delete();
-          }
-
-          ListResult listFile = await FirebaseStorage.instance
-              .ref("user_files/$activityID")
-              .listAll();
-
-          for (Reference file in listFile.items) {
-            await file.delete();
-          }
-        } else {
-          QuerySnapshot notifSnap = await FirebaseFirestore.instance
-              .collection('notifications')
-              .where('scheduled_activities_id', isEqualTo: scheduleID)
-              .get();
-
-          for (DocumentSnapshot doc in notifSnap.docs) {
-            await FirebaseFirestore.instance
-                .collection('notifications')
-                .doc(doc.id)
-                .delete();
-          }
-
-          await schedRef.delete();
+        for (DocumentSnapshot doc in taskSnap.docs) {
+          await FirebaseFirestore.instance
+              .collection('subtugass')
+              .doc(doc.id)
+              .delete();
         }
+
+        QuerySnapshot notifSnap = await FirebaseFirestore.instance
+            .collection('notifikasis')
+            .where('kegiatans_id', isEqualTo: activityID)
+            .get();
+
+        for (DocumentSnapshot doc in notifSnap.docs) {
+          await FirebaseFirestore.instance
+              .collection('notifikasis')
+              .doc(doc.id)
+              .delete();
+          await AwesomeNotifications().cancel(doc.id.hashCode);
+        }
+
+        QuerySnapshot logSnap = await FirebaseFirestore.instance
+            .collection('logs')
+            .where('kegiatans_id', isEqualTo: activityID)
+            .get();
+
+        for (DocumentSnapshot doc in logSnap.docs) {
+          await FirebaseFirestore.instance
+              .collection('logs')
+              .doc(doc.id)
+              .delete();
+        }
+
+        QuerySnapshot locSnap = await FirebaseFirestore.instance
+            .collection('lokasis')
+            .where('kegiatans_id', isEqualTo: activityID)
+            .get();
+
+        for (DocumentSnapshot doc in locSnap.docs) {
+          await FirebaseFirestore.instance
+              .collection('lokasis')
+              .doc(doc.id)
+              .delete();
+        }
+
+        QuerySnapshot fileSnap = await FirebaseFirestore.instance
+            .collection('files')
+            .where('kegiatans_id', isEqualTo: activityID)
+            .get();
+
+        for (DocumentSnapshot doc in fileSnap.docs) {
+          await FirebaseStorage.instance.ref(doc['path']).delete();
+
+          await FirebaseFirestore.instance
+              .collection('files')
+              .doc(doc.id)
+              .delete();
+        }
+
+        ListResult listFile = await FirebaseStorage.instance
+            .ref("user_files/$activityID")
+            .listAll();
+
+        for (Reference file in listFile.items) {
+          await file.delete();
+        }
+
+        Provider.of<ActivityTaskToday>(context, listen: false)
+            .resetDataLoaded();
+        Provider.of<ActivityTaskToday>(context, listen: false)
+            .getListOfTodayActivities();
 
         Navigator.of(context).pop();
         Navigator.of(context).pop();
 
         AlertInformation.showDialogBox(
           context: context,
-          title: "Deleted Schedule",
-          message: "Successfully deleted the schedule activity, Thank you.",
+          title: "Hapus Jadwal Kegiatan Berhasil",
+          message:
+              "Jadwal kegiatan yang kamu pilih berhasil dihapus. Terima kasih.",
         );
       } else {
         Navigator.of(context).pop();
@@ -454,10 +409,11 @@ class _HomeState extends State<Home> {
 
         AlertInformation.showDialogBox(
           context: context,
-          title: "Undeleted Schedule",
-          message: "The schedule activity unsuccessfully deleted.",
+          title: "Jadwal Kegiatan Tidak Berhasil Dihapus",
+          message:
+              "Mohon maaf. Jadwal kegiatan yang kamu pilih tidak berhasil dihapus, silahkan coba lagi.",
         );
-        print('Document not found or activities_id does not match');
+        // print('Document not found or activities_id does not match');
       }
     } catch (e) {
       Navigator.of(context).pop();
@@ -465,8 +421,8 @@ class _HomeState extends State<Home> {
 
       AlertInformation.showDialogBox(
         context: context,
-        title: "E",
-        message: "E",
+        title: "$e",
+        message: "$e",
       );
     }
   }
@@ -822,10 +778,18 @@ class _HomeState extends State<Home> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => DetailActivity(
-                          scheduledID: act.idScheduled,
+                          scheduledID: act.idActivity,
                         ),
                       ),
-                    );
+                    ).then((result) {
+                      if (result == true) {
+                        // Data was added, refresh timer.dart
+                        Provider.of<ActivityTaskToday>(context, listen: false)
+                            .resetDataLoaded();
+                        Provider.of<ActivityTaskToday>(context, listen: false)
+                            .getListOfTodayActivities();
+                      }
+                    });
                     setState(() {
                       getActivityList();
                       // scheduleNotifications(userID);
@@ -929,7 +893,6 @@ class _HomeState extends State<Home> {
                                                         GestureDetector(
                                                           onTap: () async {
                                                             await deleteScheduledActivity(
-                                                              act.idScheduled,
                                                               act.idActivity,
                                                             );
 
@@ -1022,10 +985,11 @@ class _HomeState extends State<Home> {
                                                 style: headerStyleBold,
                                               ),
                                               Text(
-                                                "Lakukan Aktivitasmu di: ",
+                                                "Lakukan Kegiatanmu di: ",
                                                 style: textStyle,
                                               ),
-                                              act.locations == null
+                                              act.locations == null ||
+                                                      act.locations!.isEmpty
                                                   ? Text(
                                                       "Dimanapun :)",
                                                       style: textStyle,
@@ -1101,116 +1065,118 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: LayoutBuilder(builder: (context, constraints) {
-        return Column(
-          children: <Widget>[
-            Container(
-              width: constraints.maxWidth,
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.only(
-                top: 40,
-                left: 20,
-                right: 20,
-                bottom: 10,
+      body: SafeArea(
+        child: LayoutBuilder(builder: (context, constraints) {
+          return Column(
+            children: <Widget>[
+              Container(
+                width: constraints.maxWidth,
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(
+                  top: 10,
+                  left: 20,
+                  right: 20,
+                  bottom: 10,
+                ),
+                decoration: const BoxDecoration(
+                  color: Color.fromARGB(255, 3, 0, 66),
+                ),
+                child: profileTop(context),
               ),
-              decoration: const BoxDecoration(
-                color: Color.fromARGB(255, 3, 0, 66),
+              // Total Activity Per Priority - Title
+              Container(
+                width: constraints.maxWidth,
+                margin: const EdgeInsets.only(left: 20, right: 20),
+                child: Text(
+                  "Total Kegiatan Per Prioritas",
+                  style: subHeaderStyleBold,
+                ),
               ),
-              child: profileTop(context),
-            ),
-            // Total Activity Per Priority - Title
-            Container(
-              width: constraints.maxWidth,
-              margin: const EdgeInsets.only(left: 20, right: 20),
-              child: Text(
-                "Total Kegiatan per Prioritas",
-                style: subHeaderStyleBold,
+              // Total Activity Per Priority - Content
+              Container(
+                margin: const EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                ),
+                width: constraints.maxWidth,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: formattedTotalActivitiesPerPriority(context),
+                ),
               ),
-            ),
-            // Total Activity Per Priority - Content
-            Container(
-              margin: const EdgeInsets.only(
-                left: 20,
-                right: 20,
-              ),
-              width: constraints.maxWidth,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: formattedTotalActivitiesPerPriority(context),
-              ),
-            ),
-            //Calendar
-            Container(
-              margin: const EdgeInsets.only(left: 20, right: 20),
-              child: TableCalendar(
-                locale: 'id_ID',
-                focusedDay: _focusedDay,
-                firstDay: DateTime.now().subtract(const Duration(days: 365)),
-                lastDay: DateTime.now().add(const Duration(days: 365)),
-                calendarFormat: calendarFormat,
-                selectedDayPredicate: (day) {
-                  return isSameDay(_selectedDay, day);
-                },
-                onDaySelected: (selectedDay, focusedDay) {
-                  setState(() {
-                    _selectedDay = selectedDay;
+              //Calendar
+              Container(
+                margin: const EdgeInsets.only(left: 20, right: 20),
+                child: TableCalendar(
+                  locale: 'id_ID',
+                  focusedDay: _focusedDay,
+                  firstDay: DateTime.now().subtract(const Duration(days: 365)),
+                  lastDay: DateTime.now().add(const Duration(days: 365)),
+                  calendarFormat: calendarFormat,
+                  selectedDayPredicate: (day) {
+                    return isSameDay(_selectedDay, day);
+                  },
+                  onDaySelected: (selectedDay, focusedDay) {
+                    setState(() {
+                      _selectedDay = selectedDay;
+                      _focusedDay = focusedDay;
+                      _selectedDate =
+                          DateFormat("yyyy-MM-dd").format(selectedDay);
+                    });
+                  },
+                  onPageChanged: (focusedDay) {
                     _focusedDay = focusedDay;
-                    _selectedDate =
-                        DateFormat("yyyy-MM-dd").format(selectedDay);
-                  });
-                },
-                onPageChanged: (focusedDay) {
-                  _focusedDay = focusedDay;
-                },
-                calendarStyle: CalendarStyle(
-                  outsideDaysVisible: false,
-                  defaultTextStyle: subHeaderStyleBold,
-                  weekendTextStyle: GoogleFonts.poppins(
-                    textStyle: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red,
+                  },
+                  calendarStyle: CalendarStyle(
+                    outsideDaysVisible: false,
+                    defaultTextStyle: subHeaderStyleBold,
+                    weekendTextStyle: GoogleFonts.poppins(
+                      textStyle: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                    selectedTextStyle: subHeaderStyleBoldWhite,
+                    todayTextStyle: subHeaderStyleBold,
+                    todayDecoration: const BoxDecoration(
+                      color: Colors.grey,
+                      shape: BoxShape.circle,
+                    ),
+                    selectedDecoration: const BoxDecoration(
+                      color: Color.fromARGB(255, 3, 0, 66),
+                      shape: BoxShape.circle,
                     ),
                   ),
-                  selectedTextStyle: subHeaderStyleBoldWhite,
-                  todayTextStyle: subHeaderStyleBold,
-                  todayDecoration: const BoxDecoration(
-                    color: Colors.grey,
-                    shape: BoxShape.circle,
-                  ),
-                  selectedDecoration: const BoxDecoration(
-                    color: Color.fromARGB(255, 3, 0, 66),
-                    shape: BoxShape.circle,
+                  headerVisible: true,
+                  headerStyle: HeaderStyle(
+                    titleCentered: true,
+                    titleTextStyle: subHeaderStyleBold,
+                    formatButtonVisible: false,
+                    formatButtonShowsNext: false,
                   ),
                 ),
-                headerVisible: true,
-                headerStyle: HeaderStyle(
-                  titleCentered: true,
-                  titleTextStyle: subHeaderStyleBold,
-                  formatButtonVisible: false,
-                  formatButtonShowsNext: false,
+              ),
+              // Activity list - Title
+              Container(
+                margin: const EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                ),
+                width: constraints.maxWidth,
+                child: Text(
+                  "Kegiatan Kamu",
+                  style: subHeaderStyleBold,
                 ),
               ),
-            ),
-            // Activity list - Title
-            Container(
-              margin: const EdgeInsets.only(
-                left: 20,
-                right: 20,
+              // Activity List - Content
+              Expanded(
+                child: formattedListOfActivities(context),
               ),
-              width: constraints.maxWidth,
-              child: Text(
-                "Your Activities",
-                style: subHeaderStyleBold,
-              ),
-            ),
-            // Activity List - Content
-            Expanded(
-              child: formattedListOfActivities(context),
-            ),
-          ],
-        );
-      }),
+            ],
+          );
+        }),
+      ),
       // Floating Action Button
       floatingActionButton: FloatingActionButton(
         onPressed: () async {

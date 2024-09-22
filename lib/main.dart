@@ -1,14 +1,16 @@
 // ignore_for_file: must_be_immutable
 
+import 'dart:async';
+
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pickleapp/auth.dart';
 import 'package:pickleapp/screen/services/activity_task_state.dart';
 import 'package:pickleapp/screen/services/timer_state.dart';
 import 'package:pickleapp/screen/page/onboarding.dart';
-import 'package:pickleapp/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:sizer/sizer.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
@@ -26,18 +28,19 @@ import 'screen/page/report.dart';
 import 'screen/page/profile.dart';
 
 Future<void> main() async {
+  await initializeDateFormatting('id_ID', null);
   AwesomeNotifications().initialize(
     'resource://drawable/applogo',
     [
       NotificationChannel(
         icon: 'resource://drawable/applogo',
         channelKey: 'activity_reminder',
-        channelName: 'Activity Reminder Notification Channel',
-        channelDescription: "Pickle App - activities reminder",
+        channelName: 'Channel Notifikasi Pengingat Kegiatan',
+        channelDescription: "Pickle App - Pengingat Kegiatan",
         defaultRingtoneType: DefaultRingtoneType.Notification,
-        importance: NotificationImportance.Max,
+        importance: NotificationImportance.Default,
         playSound: true,
-        enableVibration: true,
+        enableVibration: false,
         channelShowBadge: true,
         defaultPrivacy: NotificationPrivacy.Private,
         locked: false,
@@ -45,10 +48,37 @@ Future<void> main() async {
       NotificationChannel(
         icon: 'resource://drawable/applogo',
         channelKey: 'timer_reminder',
-        channelName: 'Timer Count Down Notification Channel',
-        channelDescription: "Pickle App - timer countdown",
+        channelName: 'Channel Notifikasi Waktu Mundur',
+        channelDescription: "Pickle App - Waktu Mundur",
         defaultRingtoneType: DefaultRingtoneType.Notification,
         importance: NotificationImportance.Max,
+        playSound: false,
+        enableVibration: false,
+        channelShowBadge: true,
+        defaultPrivacy: NotificationPrivacy.Private,
+        locked: true,
+      ),
+      NotificationChannel(
+        icon: 'resource://drawable/applogo',
+        channelKey: 'mulai_kegiatan',
+        channelName: 'Channel Notifikasi Mulai Kegiatan',
+        channelDescription: "Pickle App - Mulai kegiatan",
+        defaultRingtoneType: DefaultRingtoneType.Notification,
+        importance: NotificationImportance.Default,
+        playSound: false,
+        enableVibration: false,
+        channelShowBadge: true,
+        defaultPrivacy: NotificationPrivacy.Private,
+        locked: true,
+      ),
+      NotificationChannel(
+        icon: 'resource://drawable/applogo',
+        channelKey: 'code_reminder',
+        channelName: 'Channel Notifikasi Kode Buka Kunci Layar',
+        channelDescription:
+            "Pickle App - Kode buka kunci layar untuk halaman timer",
+        defaultRingtoneType: DefaultRingtoneType.Notification,
+        importance: NotificationImportance.High,
         playSound: true,
         enableVibration: true,
         channelShowBadge: true,
@@ -57,27 +87,17 @@ Future<void> main() async {
       ),
       NotificationChannel(
         icon: 'resource://drawable/applogo',
-        channelKey: 'code_reminder',
-        channelName: 'Secret Code for Timer Count Down Notification Channel',
-        channelDescription: "Pickle App - secret code for locked app",
-        defaultRingtoneType: DefaultRingtoneType.Notification,
-        importance: NotificationImportance.High,
-        playSound: true,
-        enableVibration: true,
-        channelShowBadge: true,
-        defaultPrivacy: NotificationPrivacy.Private,
-      ),
-      NotificationChannel(
-        icon: 'resource://drawable/applogo',
         channelKey: 'daily_reminder',
-        channelName: 'Reminder for you to make your daily plan',
-        channelDescription: "Pickle App - Remider to make a schedule",
+        channelName: 'Channel Notifikasi Pengingat Waktu Penjadwalan',
+        channelDescription:
+            "Pickle App - Pengingat untuk melakukan penjadwalan kegiatan",
         defaultRingtoneType: DefaultRingtoneType.Notification,
         importance: NotificationImportance.High,
         playSound: true,
         enableVibration: true,
         channelShowBadge: true,
         defaultPrivacy: NotificationPrivacy.Private,
+        locked: true,
       ),
     ],
     debug: true,
@@ -105,6 +125,7 @@ Future<void> main() async {
   //     );
   //   }
   // });
+
   tzdata.initializeTimeZones();
   runApp(
     MultiProvider(
@@ -139,6 +160,16 @@ class _MyAppState extends State<MyApp> {
     return Sizer(
       builder: (context, orientation, deviceType) {
         return MaterialApp(
+          locale: const Locale('id', 'ID'),
+          supportedLocales: const [
+            Locale('en', 'US'),
+            Locale('id', 'ID'),
+          ],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: FutureBuilder<bool>(
             future: checkFirstInstallation(),
             builder: (context, snapshot) {
@@ -186,9 +217,10 @@ class _MyHomePageState extends State<MyHomePage> {
       content: NotificationContent(
         id: 73,
         channelKey: 'daily_reminder',
-        title: "Time to Make a Schedule for Your Success",
+        title: "Waktunya Membuat Rencana Kegiatan",
         body:
-            "Take a moment to make a schedule your daily activity. A well structured plan helps you to stay focused and productive",
+            "Jangan lupa untuk merencanakan kegiatanmu hari ini. Kegiatan yang terstruktur membantu kamu untuk lebih fokus dan tetap produktif.",
+        backgroundColor: const Color.fromARGB(255, 255, 170, 0),
         notificationLayout: NotificationLayout.BigText,
         criticalAlert: true,
         wakeUpScreen: true,
@@ -210,9 +242,10 @@ class _MyHomePageState extends State<MyHomePage> {
       content: NotificationContent(
         id: 74,
         channelKey: 'daily_reminder',
-        title: "Time to Make a Schedule for Your Success",
+        title: "Waktunya Membuat Rencana Kegiatan",
         body:
-            "Take a moment to make a schedule your daily activity. A well structured plan helps you to stay focused and productive",
+            "Jangan lupa untuk merencanakan kegiatanmu buat besok. Kegiatan yang terstruktur membantu kamu untuk lebih fokus dan tetap produktif.",
+        backgroundColor: const Color.fromARGB(255, 255, 170, 0),
         notificationLayout: NotificationLayout.BigText,
         criticalAlert: true,
         wakeUpScreen: true,
@@ -235,12 +268,6 @@ class _MyHomePageState extends State<MyHomePage> {
     AwesomeNotifications().isNotificationAllowed().then((value) {
       if (!value) {
         AwesomeNotifications().requestPermissionToSendNotifications();
-      }
-    });
-    setState(() {
-      if (widget.isLoading == true) {
-        widget.isLoading = false;
-        Navigator.of(context).pop();
       }
     });
     reminderDayDaily();
@@ -278,29 +305,29 @@ class _MyHomePageState extends State<MyHomePage> {
 
         // List halaman untuk navbar dengan index 0 = home, dst
         items: <Widget>[
-          Column(
+          const Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.home_filled,
                 color: Colors.white,
               ),
               Text(
-                "Home",
-                style: textStyleWhite,
+                "Utama",
+                style: TextStyle(color: Colors.white),
               ),
             ],
           ),
-          Column(
+          const Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.timer,
                 color: Colors.white,
               ),
               Text(
                 "Timer",
-                style: textStyleWhite,
+                style: TextStyle(color: Colors.white),
               ),
             ],
           ),
@@ -312,35 +339,35 @@ class _MyHomePageState extends State<MyHomePage> {
                 width: 24,
                 height: 24,
               ),
-              Text(
-                "Learning",
-                style: textStyleWhite,
+              const Text(
+                "Pickle",
+                style: TextStyle(color: Colors.white),
               ),
             ],
           ),
-          Column(
+          const Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.library_books,
                 color: Colors.white,
               ),
               Text(
-                "Report",
-                style: textStyleWhite,
+                "Laporan",
+                style: TextStyle(color: Colors.white),
               ),
             ],
           ),
-          Column(
+          const Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.person,
                 color: Colors.white,
               ),
               Text(
-                "Profile",
-                style: textStyleWhite,
+                "Profil",
+                style: TextStyle(color: Colors.white),
               ),
             ],
           ),

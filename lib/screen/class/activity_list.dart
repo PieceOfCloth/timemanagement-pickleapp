@@ -2,21 +2,21 @@ import 'package:pickleapp/screen/class/location.dart';
 
 class ActivityList {
   String idActivity;
-  String idScheduled;
+  // String idScheduled;
   String title;
   String startTime;
   String endTime;
   String importantType;
   String urgentType;
-  int? colorA;
-  int? colorR;
-  int? colorG;
-  int? colorB;
+  int colorA;
+  int colorR;
+  int colorG;
+  int colorB;
   List<Locations>? locations;
 
   ActivityList({
     required this.idActivity,
-    required this.idScheduled,
+    // required this.idScheduled,
     required this.title,
     required this.startTime,
     required this.endTime,
@@ -32,7 +32,7 @@ class ActivityList {
   factory ActivityList.fromJson(Map<String, dynamic> json) {
     return ActivityList(
       idActivity: json['idActivity'] as String,
-      idScheduled: json['idScheduled'] as String,
+      // idScheduled: json['idScheduled'] as String,
       title: json['title'] as String,
       startTime: json['startTime'] as String,
       endTime: json['endTime'] as String,
@@ -48,6 +48,6 @@ class ActivityList {
 
   @override
   String toString() {
-    return 'ActivityList: {idActivity: $idActivity, idScheduled: $idScheduled, title: $title, startTime: $startTime, endTime: $endTime, importantType: $importantType, urgentType: $urgentType, colorA: $colorA, colorR: $colorR, colorG: $colorG, colorB: $colorB, locations: $locations}';
+    return 'ActivityList: {idActivity: $idActivity, title: $title, startTime: $startTime, endTime: $endTime, importantType: $importantType, urgentType: $urgentType, colorA: $colorA, colorR: $colorR, colorG: $colorG, colorB: $colorB, locations: $locations}';
   }
 }

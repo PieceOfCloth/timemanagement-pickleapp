@@ -53,6 +53,15 @@ class _MySignUpState extends State<MySignUp> {
 
       User user = userCredential.user!;
 
+      await FirebaseFirestore.instance.collection("kategoris").add({
+        "nama": "Lainnya",
+        "users_id": user.uid,
+        "warna_a": 255,
+        "warna_r": 255,
+        "warna_g": 255,
+        "warna_b": 255,
+      });
+
       String fileName = '${user.uid}.jpg';
       String url = 'user_profile/$fileName';
       Reference storageReference =

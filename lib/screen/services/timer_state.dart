@@ -2,6 +2,7 @@
 import 'dart:math';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
+import 'package:kiosk_mode/kiosk_mode.dart';
 import 'dart:async';
 import 'package:pickleapp/screen/services/activity_task_state.dart';
 import 'package:provider/provider.dart';
@@ -28,12 +29,14 @@ class TimerState extends ChangeNotifier {
       content: NotificationContent(
         id: 1,
         channelKey: 'timer_reminder',
-        title: breakSession == true ? "Let's Take a Break" : "Time to Focus",
+        title: breakSession == true
+            ? "Mari Istirahat Sejenak"
+            : "Waktunya Untuk Fokus",
         body: "$menit : $detik",
         backgroundColor: const Color.fromARGB(255, 255, 170, 0),
         notificationLayout: NotificationLayout.BigText,
         criticalAlert: true,
-        wakeUpScreen: true,
+        wakeUpScreen: false,
         locked: true,
         category: NotificationCategory.StopWatch,
         icon: 'resource://drawable/applogo',
@@ -46,8 +49,9 @@ class TimerState extends ChangeNotifier {
       content: NotificationContent(
         id: 2,
         channelKey: 'code_reminder',
-        title: 'Time is Up!',
-        body: 'Focus session has ended. Unlock the app using these code: $code',
+        title: 'Waktu Telah Habis',
+        body:
+            'Waktu fokus telah selesai. Silahkan untuk memasukkan kode: $code untuk dapat membuka kunci. Terima kasih.',
         wakeUpScreen: true,
         backgroundColor: const Color.fromARGB(255, 255, 170, 0),
         notificationLayout: NotificationLayout.BigText,
@@ -64,10 +68,14 @@ class TimerState extends ChangeNotifier {
     running = true;
     isDropDownDisable = true;
 
-    // playTimerSound();
+    if (running == true) {
+      AwesomeNotifications().dismiss(2);
+    }
 
-    if (isLocked == true) {
-      generateRandomScreenCode();
+    if (breakSession == false) {
+      if (isLocked == true) {
+        await startKioskMode();
+      }
     }
 
     _timer = Timer.periodic(
@@ -77,9 +85,14 @@ class TimerState extends ChangeNotifier {
           if (second < 1) {
             if (minute < 1) {
               timer.cancel();
+              if (isLocked == true) {
+                await stopKioskMode();
+                secretCode(code ?? "1234");
+              }
               secondsWorkTotals =
-                  DateTime.now().difference(startTime).inSeconds;
+                  DateTime.now().difference(startTime).inSeconds - 1;
               breakSession = true;
+              // KioskModeManager.stopKioskMode();
               second = 0;
               minute = 0;
               running = false;
@@ -88,22 +101,23 @@ class TimerState extends ChangeNotifier {
               Provider.of<ActivityTaskToday>(context, listen: false)
                   .addActivityLog(secondsWorkTotals);
               AwesomeNotifications().dismiss(1);
-              if (isLocked == true) {
-                secretCode(code ?? "1234");
-              }
-              // stopSound();
-              // playStopSound();
             } else {
               minute--;
               second = 59;
-              notifTimer(second, minute);
+              if (isLocked == false) {
+                notifTimer(second, minute);
+              }
             }
           } else {
             second--;
-            notifTimer(second, minute);
+            if (isLocked == false) {
+              notifTimer(second, minute);
+            }
             if (second == 59) {
               minute--;
-              notifTimer(second, minute);
+              if (isLocked == false) {
+                notifTimer(second, minute);
+              }
             }
           }
         } else {
@@ -141,10 +155,16 @@ class TimerState extends ChangeNotifier {
     running = true;
     startTime = DateTime.now();
 
-    // playTimerSound();
+    // playTimerSound()
 
-    if (isLocked == true) {
-      generateRandomScreenCode();
+    if (running == true) {
+      AwesomeNotifications().dismiss(2);
+    }
+
+    if (breakSession == false) {
+      if (isLocked == true) {
+        await startKioskMode();
+      }
     }
 
     _timer = Timer.periodic(
@@ -154,8 +174,12 @@ class TimerState extends ChangeNotifier {
           if (second < 1) {
             if (minute < 1) {
               timer.cancel();
+              if (isLocked == true) {
+                await stopKioskMode();
+                secretCode(code ?? "1234");
+              }
               secondsWorkTotals =
-                  DateTime.now().difference(startTime).inSeconds;
+                  DateTime.now().difference(startTime).inSeconds - 1;
               breakSession = true;
               second = 0;
               running = false;
@@ -164,22 +188,23 @@ class TimerState extends ChangeNotifier {
               Provider.of<ActivityTaskToday>(context, listen: false)
                   .addActivityLog(secondsWorkTotals);
               AwesomeNotifications().dismiss(1);
-              if (isLocked == true) {
-                secretCode(code!);
-              }
-              // stopSound();
-              // playStopSound();
             } else {
               minute--;
               second = 59;
-              notifTimer(second, minute);
+              if (isLocked == false) {
+                notifTimer(second, minute);
+              }
             }
           } else {
             second--;
-            notifTimer(second, minute);
+            if (isLocked == false) {
+              notifTimer(second, minute);
+            }
             if (second == 59) {
               minute--;
-              notifTimer(second, minute);
+              if (isLocked == false) {
+                notifTimer(second, minute);
+              }
             }
           }
         } else {
@@ -219,6 +244,7 @@ class TimerState extends ChangeNotifier {
 
     // stopSound();
     // playStopSound();
+    // _stopKioskMode();
 
     running = false;
     if (breakSession == false) {

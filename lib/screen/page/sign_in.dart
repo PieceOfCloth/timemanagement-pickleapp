@@ -118,6 +118,15 @@ class _MySignInState extends State<MySignIn> {
             .child('user_profile')
             .child(fileName);
 
+        await FirebaseFirestore.instance.collection("kategoris").add({
+          "nama": "Lainnya",
+          "users_id": userCred.user?.uid,
+          "warna_a": 255,
+          "warna_r": 255,
+          "warna_g": 255,
+          "warna_b": 255,
+        });
+
         // Load default profile picture from assets as ByteData
         ByteData defaultImageData = await rootBundle.load(path!);
         // Convert ByteData to Uint8List
@@ -377,7 +386,7 @@ class _MySignInState extends State<MySignIn> {
                                 color: const Color.fromARGB(255, 3, 0, 66),
                               ),
                               child: Text(
-                                "Sign In",
+                                "Login",
                                 style: textStyleBoldWhite,
                               ),
                             ),
@@ -425,7 +434,7 @@ class _MySignInState extends State<MySignIn> {
                           const SizedBox(
                               width: 8.0), // Space between icon and text
                           Text(
-                            'Sign In dengan Google',
+                            'Login dengan Google',
                             style: textStyleBold,
                           ),
                         ],

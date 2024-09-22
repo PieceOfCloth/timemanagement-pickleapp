@@ -1,14 +1,27 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:pickleapp/auth.dart';
+import 'package:pickleapp/screen/class/file.dart';
 import 'package:pickleapp/screen/class/task.dart';
+import 'package:pickleapp/screen/class/timer.dart';
 
 class ActivityTaskToday extends ChangeNotifier {
-  String? activityId;
+  String? scheduleId;
   DateTime todayDate = DateTime.now();
-  List<Map<String, dynamic>> todayActivities = [];
+  List<TimerList> todayActivities = [];
   List<Tasks> tasks = [];
+  List<Files> files = [];
   bool _dataLoaded = false;
+
+  String timestampToTimeString(Timestamp timestamp) {
+    // Convert the Timestamp to a DateTime object
+    DateTime date = timestamp.toDate();
+
+    // Format the DateTime object to "hh:mm a"
+    DateFormat formatter = DateFormat('hh:mm a');
+    return formatter.format(date);
+  }
 
   Future<void> getListOfTodayActivities() async {
     if (_dataLoaded) return;
@@ -19,40 +32,31 @@ class ActivityTaskToday extends ChangeNotifier {
     final startTime = DateTime(today.year, today.month, today.day);
     final endTime = DateTime(today.year, today.month, today.day, 23, 59, 59);
 
-    Set<String> uniqueID = <String>{};
-
     if (startTime.isAfter(todayDate)) {
       todayActivities.clear();
     }
     todayDate = startTime;
 
     final schQuery = await FirebaseFirestore.instance
-        .collection('scheduled_activities')
-        .where('actual_start_time', isGreaterThanOrEqualTo: startTime)
-        .where('actual_start_time', isLessThan: endTime)
+        .collection('kegiatans')
+        .where('waktu_mulai', isGreaterThanOrEqualTo: startTime)
+        .where('waktu_mulai', isLessThan: endTime)
+        .where('users_id', isEqualTo: userID)
         .get();
 
     if (schQuery.docs.isNotEmpty) {
       for (var doc in schQuery.docs) {
-        var actID = doc['activities_id'];
-        if (!uniqueID.contains(actID)) {
-          final actDoc = await FirebaseFirestore.instance
-              .collection('activities')
-              .doc(actID)
-              .get();
-          if (actDoc.exists) {
-            if (actDoc.data()!['user_id'] == userID) {
-              var actData = actDoc.data()!;
-
-              actData['id'] = actID;
-
-              uniqueID.add(actID);
-              todayActivities.add(actData);
-            }
-          }
-        }
+        todayActivities.add(TimerList(
+            status: doc['status'],
+            idActivity: doc.id,
+            title: doc['nama'],
+            startTime: timestampToTimeString(doc['waktu_mulai']),
+            endTime: timestampToTimeString(doc['waktu_akhir']),
+            importantType: doc['tipe_kepentingan'],
+            urgentType: doc['tipe_mendesak']));
       }
     }
+
     _dataLoaded = true;
     notifyListeners();
   }
@@ -61,15 +65,33 @@ class ActivityTaskToday extends ChangeNotifier {
     tasks.clear();
 
     final taskQuery = await FirebaseFirestore.instance
-        .collection('tasks')
-        .where('activities_id', isEqualTo: activityId)
+        .collection('subtugass')
+        .where('kegiatans_id', isEqualTo: scheduleId)
         .get();
     if (taskQuery.docs.isNotEmpty) {
       for (var doc in taskQuery.docs) {
         tasks.add(Tasks(
           id: doc.id,
-          task: doc['title'],
+          task: doc['nama'],
           status: doc['status'],
+        ));
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<void> getFileListOfTodayActivities() async {
+    files.clear();
+
+    final fileSnap = await FirebaseFirestore.instance
+        .collection('files')
+        .where('kegiatans_id', isEqualTo: scheduleId)
+        .get();
+    if (fileSnap.docs.isNotEmpty) {
+      for (var doc in fileSnap.docs) {
+        files.add(Files(
+          name: doc['nama'],
+          path: doc['path'],
         ));
       }
     }
@@ -78,36 +100,44 @@ class ActivityTaskToday extends ChangeNotifier {
 
   void updateStatusTask(String? id, bool? status) async {
     await FirebaseFirestore.instance
-        .collection('tasks')
+        .collection('subtugass')
         .doc(id)
         .update({'status': status});
     notifyListeners();
   }
 
-  void selectActivity(String? activityID) {
-    activityId = activityID;
+  void selectSchedule(String? scheduleID) {
+    scheduleId = scheduleID;
+    notifyListeners();
+  }
+
+  void updateStatusKegiatans(String id, bool status) async {
+    await FirebaseFirestore.instance
+        .collection('kegiatans')
+        .doc(id)
+        .update({'status': status});
     notifyListeners();
   }
 
   Future<void> addActivityLog(int timeTotal) async {
     QuerySnapshot checkLog = await FirebaseFirestore.instance
         .collection('logs')
-        .where('activities_id', isEqualTo: activityId)
+        .where('kegiatans_id', isEqualTo: scheduleId)
         .get();
 
     // final logSnap = await checkLog.get();
 
     if (checkLog.docs.isEmpty) {
       await FirebaseFirestore.instance.collection('logs').add({
-        'activities_id': activityId,
-        'actual_time_spent': timeTotal,
+        'kegiatans_id': scheduleId,
+        'waktu_asli_penggunaan': timeTotal,
       });
     } else {
       final logDoc = checkLog.docs.first;
       await FirebaseFirestore.instance
           .collection('logs')
           .doc(logDoc.id)
-          .update({'actual_time_spent': FieldValue.increment(timeTotal)});
+          .update({'waktu_asli_penggunaan': FieldValue.increment(timeTotal)});
     }
   }
 

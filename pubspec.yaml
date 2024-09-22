@@ -32,9 +32,7 @@ dependencies:
     sdk: flutter
   # Google fonts
   google_fonts: any
-  # FAB Expendable
-  flutter_expandable_fab: any
-  # For responsive UI size
+  # For responsive UI size (tidak)
   sizer: any
   # Date formatting
   intl: any
@@ -43,14 +41,12 @@ dependencies:
   table_calendar: any
   # Curved Bottom Nav Bar
   curved_navigation_bar: any
-
+  # timer number picker
   numberpicker: any
-  
+  # handle global service
   provider: any
   # Store simple data
   shared_preferences: any
-  # To encrypt password
-  crypto: any
   # Fetch data from internet
   http: any # any
   # IANA time zones database
@@ -75,6 +71,7 @@ dependencies:
   flutter_polyline_points: any
   get: any
   flutter_osm_plugin: any
+  permission_handler: any
 
   url_launcher: any
 
@@ -89,16 +86,18 @@ dependencies:
   flutter_screen_lock: any
   awesome_notifications: any
 
-  syncfusion_flutter_charts: any
   fl_chart: any
-  firebase_dynamic_links: any
   google_sign_in: any
-  audioplayers: any
   introduction_screen: any
   flutter_background_service: any
   overlay_support: any
   collection: any
   firebase_app_check: any
+  flutter_localization: any
+  flutter_windowmanager: any
+  kiosk_mode: any
+  flutter_localizations:
+    sdk: flutter
 
 flutter_native_splash:
   android: true
@@ -122,7 +121,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^3.0.1
+  flutter_lints: ^4.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

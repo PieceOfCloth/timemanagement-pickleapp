@@ -84,7 +84,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
                 ListTile(
                   tileColor: Colors.white,
                   leading: const Icon(Icons.photo_library_rounded),
-                  title: const Text('Gallery'),
+                  title: const Text('Galeri'),
                   onTap: () {
                     imageGallery();
                     Navigator.of(context).pop();
@@ -93,7 +93,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
                 ListTile(
                   tileColor: Colors.white,
                   leading: const Icon(Icons.camera_alt_rounded),
-                  title: const Text('Camera'),
+                  title: const Text('Kamera'),
                   onTap: () {
                     imageCamera();
                     Navigator.of(context).pop();
@@ -135,7 +135,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
       maxWidth: 600,
     );
     if (img == null) {
-      print("No picture selected");
+      print("Tidak ada gambar yang dipilih");
     } else {
       final directory = await getApplicationDocumentsDirectory();
 
@@ -146,7 +146,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
 
       setState(() {
         _urlPhoto = newImage;
-        print("Gallery: $_urlPhoto");
+        print("Galeri: $_urlPhoto");
       });
     }
   }
@@ -171,7 +171,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
 
       setState(() {
         _urlPhoto = newImage;
-        print("Gallery: $_urlPhoto");
+        print("Photo: $_urlPhoto");
       });
     }
   }
@@ -226,8 +226,8 @@ class _MyEditProfileState extends State<MyEditProfile> {
       Navigator.of(context).pop();
       AlertInformation.showDialogBox(
         context: context,
-        title: "Profile Updated",
-        message: "Your Profile has been updated successfully, thank you.",
+        title: "Profil telah Berhasil Diubah",
+        message: "Profil kamu telah berhasil diubah. Terima kasih.",
       );
     } catch (e) {
       Navigator.of(context).pop();
@@ -247,7 +247,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: Text(
-          'Edit Profile',
+          'Ubah Profil',
           style: headerStyleBold,
         ),
       ),
@@ -353,7 +353,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Photo Profile",
+                          "Foto Profil",
                           style: textStyle,
                         ),
                         const SizedBox(
@@ -380,7 +380,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
                               imagePicker(context);
                             },
                             child: Text(
-                              "Click here to change your photo profile",
+                              "Click disini untuk memilih gambar",
                               style: textStyleBoldWhite,
                             ),
                           ),
@@ -394,7 +394,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Preferred name",
+                          "Nama panggilan",
                           style: textStyle,
                         ),
                         const SizedBox(
@@ -423,7 +423,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
                                       TextCapitalization.sentences,
                                   autofocus: false,
                                   decoration: InputDecoration(
-                                    hintText: "Change your preferred name",
+                                    hintText: "Masukkan nama panggilan kamu",
                                     hintStyle: textStyleGrey,
                                   ),
                                   controller: _prefNameCont,
@@ -450,11 +450,11 @@ class _MyEditProfileState extends State<MyEditProfile> {
                             builder: (BuildContext context) {
                               return AlertDialog(
                                 title: Text(
-                                  'Profile Changes',
+                                  'Ubah Profil',
                                   style: subHeaderStyleBold,
                                 ),
                                 content: Text(
-                                  'Are you sure want to change it?',
+                                  'Apakah kamu yakin ingin mengubah profil?',
                                   style: textStyle,
                                 ),
                                 actions: <Widget>[
@@ -477,7 +477,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
                                       ),
                                       child: // Space between icon and text
                                           Text(
-                                        'Change it',
+                                        'Ubah',
                                         style: textStyleBold,
                                       ),
                                     ),
@@ -500,7 +500,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
                                       ),
                                       child: // Space between icon and text
                                           Text(
-                                        'Cancel',
+                                        'Batal',
                                         style: textStyleBoldWhite,
                                       ),
                                     ),
@@ -519,7 +519,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'Information',
+                                      'Informasi',
                                       style: subHeaderStyleBold,
                                     ),
                                     IconButton(
@@ -531,7 +531,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
                                   ],
                                 ),
                                 content: Text(
-                                  'There are no change in your profile, please make any change if you want to save it.',
+                                  'Tidak ada perubahan pada profil kamu, mohon untuk melakukan perubahan profil.',
                                   style: textStyle,
                                 ),
                               );
@@ -548,7 +548,7 @@ class _MyEditProfileState extends State<MyEditProfile> {
                           color: const Color.fromARGB(255, 3, 0, 66),
                         ),
                         child: Text(
-                          "Save Profile",
+                          "Ubah Profil",
                           style: textStyleBoldWhite,
                         ),
                       ),

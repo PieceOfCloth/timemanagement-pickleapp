@@ -48,7 +48,7 @@ class _ChangePasswordState extends State<ChangePassword> {
       if (e.code == 'wrong-password') {
         throw FirebaseAuthException(
             message:
-                'Please fill with the correct current password, Thank you!',
+                'Silahkan isi dengan kata sandi lama yang benar. Terima kasih.',
             code: e.code);
       } else {
         rethrow;
@@ -77,9 +77,9 @@ class _ChangePasswordState extends State<ChangePassword> {
 
       AlertInformation.showDialogBox(
         context: context,
-        title: 'Verify Update Password',
+        title: 'Ubah kata sandi Diproses',
         message:
-            "We've sent you an email to change your password. Please check your email and complete the verification process before change your password. Thank you!",
+            "Kami telah mengirimkanmu pesan untuk mengubah kata sandi melalui email, silahkan diproses untuk dapat mengubah kata sandi kamu. Terima kasih.",
       );
     } on FirebaseAuthException catch (e) {
       Navigator.of(context).pop();
@@ -87,23 +87,23 @@ class _ChangePasswordState extends State<ChangePassword> {
       if (e.code == 'invalid-email') {
         AlertInformation.showDialogBox(
           context: context,
-          title: 'Invalid Email',
+          title: 'Email Tidak Valid',
           message:
-              "Your email address is not valid, please to fill the email correctly.",
+              "Email kamu tidak valid, Silahkan isi dengan email yang benar. Terima kasih.",
         );
       } else if (e.code == 'user-not-found') {
         AlertInformation.showDialogBox(
           context: context,
-          title: 'Email Not Found',
+          title: 'Email Tidak Ditemukan',
           message:
-              "There is no account with your email, Please to fill the correct one.",
+              "Akun dengan email tersebut tidak dapat ditemukan. Silahkan coba lagi. Terima kasih.",
         );
       } else if (e.code == "invalid-credential") {
         AlertInformation.showDialogBox(
           context: context,
-          title: 'Incorrect Input',
+          title: 'Input Tidak Sesuai',
           message:
-              "Your email address or password isn't correct, please try again.",
+              "Kata sandi atau email yang kamu masukkan tidak sesuai. Silahkan masukkan data yang benar. Terima kasih.",
         );
       } else {
         AlertInformation.showDialogBox(
@@ -127,7 +127,7 @@ class _ChangePasswordState extends State<ChangePassword> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: Text(
-          'Change Password',
+          'Ubah Kata Sandi',
           style: subHeaderStyleBold,
         ),
       ),
@@ -177,12 +177,12 @@ class _ChangePasswordState extends State<ChangePassword> {
                             autofocus: false,
                             controller: email,
                             decoration: InputDecoration(
-                              hintText: "Enter your email here",
+                              hintText: "Masukkan email kamu disini",
                               hintStyle: textStyleGrey,
                             ),
                             validator: (value) {
                               if (value == "" || value == null) {
-                                return 'Please fill this field';
+                                return 'Silahkan isi email kamu';
                               } else {
                                 return null;
                               }
@@ -202,7 +202,7 @@ class _ChangePasswordState extends State<ChangePassword> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Current Password",
+                    "Kata sandi lama",
                     textDirection: TextDirection.ltr,
                     style: textStyle,
                   ),
@@ -232,8 +232,7 @@ class _ChangePasswordState extends State<ChangePassword> {
                             autofocus: false,
                             controller: oldPass,
                             decoration: InputDecoration(
-                              hintText:
-                                  "Enter your current secret password here",
+                              hintText: "Masukkan kata sandi lama kamu",
                               hintStyle: textStyleGrey,
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -250,7 +249,7 @@ class _ChangePasswordState extends State<ChangePassword> {
                             ),
                             validator: (value) {
                               if (value == null || value == "") {
-                                return 'Please fill this field with your current password.';
+                                return 'Silahkan isi kata sandi lama kamu.';
                               } else {
                                 return null;
                               }
@@ -276,10 +275,11 @@ class _ChangePasswordState extends State<ChangePassword> {
                       builder: (BuildContext context) {
                         return AlertDialog(
                           title: Text(
-                            'Password Change',
+                            'Proses Ubah Kata sandi',
                             style: subHeaderStyleBold,
                           ),
-                          content: Text('Are you sure want to change it?',
+                          content: Text(
+                              'Apakah kamu yakin untuk melanjutkan proses ubah kata sandi?',
                               style: textStyle),
                           actions: <Widget>[
                             GestureDetector(
@@ -299,7 +299,7 @@ class _ChangePasswordState extends State<ChangePassword> {
                                 ),
                                 child: // Space between icon and text
                                     Text(
-                                  'Change it',
+                                  'Lanjutkan',
                                   style: textStyleBold,
                                 ),
                               ),
@@ -321,7 +321,7 @@ class _ChangePasswordState extends State<ChangePassword> {
                                 ),
                                 child: // Space between icon and text
                                     Text(
-                                  'Cancel',
+                                  'Batal',
                                   style: textStyleBoldWhite,
                                 ),
                               ),
@@ -341,7 +341,7 @@ class _ChangePasswordState extends State<ChangePassword> {
                     color: const Color.fromARGB(255, 3, 0, 66),
                   ),
                   child: Text(
-                    "Change Password",
+                    "Ubah Kata Sandi",
                     style: textStyleBoldWhite,
                   ),
                 ),

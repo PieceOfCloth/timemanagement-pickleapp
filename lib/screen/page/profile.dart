@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:pickleapp/auth.dart';
+import 'package:pickleapp/screen/class/activity_list.dart';
+import 'package:pickleapp/screen/class/location.dart';
 import 'package:pickleapp/screen/services/activity_task_state.dart';
 import 'package:pickleapp/screen/page/sign_in.dart';
 import 'package:pickleapp/theme.dart';
@@ -24,13 +26,11 @@ class _ProfileState extends State<Profile> {
   // ProfileClass? Ps;
   List activity = [];
   List schedule = [];
+  List<ActivityList> activitiesList = [];
   late Future<ProfileClass?> userApp;
 
   // Logout function
   void doLogout() async {
-    // ini nanti dihapus jika tidak diperlukan
-    // final prefs = await SharedPreferences.getInstance();
-    // prefs.remove("user_id");
     Provider.of<ActivityTaskToday>(context, listen: false).resetDataLoaded();
 
     FirebaseAuth.instance.signOut();
@@ -62,8 +62,6 @@ class _ProfileState extends State<Profile> {
   // }
 
   Future<ProfileClass?> getProfile() async {
-    List<Map<String, dynamic>> activity = [];
-
     final userDoc =
         await FirebaseFirestore.instance.collection('users').doc(userID).get();
 
@@ -73,77 +71,109 @@ class _ProfileState extends State<Profile> {
       String imageUrl =
           await FirebaseStorage.instance.ref(imagePath).getDownloadURL();
 
-      final actSnap = await FirebaseFirestore.instance
-          .collection('activities')
-          .where("user_id", isEqualTo: userID)
+      // Convert date string to DateTime and then to Timestamp
+      DateTime dateTime = DateTime(
+          DateTime.now().year, DateTime.now().month, DateTime.now().day);
+
+      Timestamp startOfDay = Timestamp.fromDate(dateTime);
+      Timestamp endOfDay =
+          Timestamp.fromDate(dateTime.add(const Duration(days: 1)));
+
+      QuerySnapshot schSnap = await FirebaseFirestore.instance
+          .collection('kegiatans')
+          .where('waktu_mulai', isGreaterThanOrEqualTo: startOfDay)
+          .where('waktu_mulai', isLessThan: endOfDay)
+          .where("users_id", isEqualTo: userID)
           .get();
 
-      if (actSnap.docs.isNotEmpty) {
-        for (var doc in actSnap.docs) {
-          var activityData = doc.data();
-          var actID = doc.id;
+      for (var doc in schSnap.docs) {
+        Timestamp actualStartTimeTimestamp = doc['waktu_mulai'];
 
-          var now = DateTime.now();
-          var startOfDay = DateTime(now.year, now.month, now.day);
-          var endOfDay = now.add(const Duration(days: 1));
+        DateTime actualStartTime = actualStartTimeTimestamp.toDate();
 
-          QuerySnapshot schedSnap = await FirebaseFirestore.instance
-              .collection('scheduled_activities')
-              .where('actual_start_time',
-                  isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-              .where('actual_start_time',
-                  isLessThan: Timestamp.fromDate(endOfDay))
-              .where('activities_id', isEqualTo: actID)
-              .get();
+        String actualStartTimeString = actualStartTime.toString();
 
-          if (schedSnap.docs.isNotEmpty) {
-            for (var schedDoc in schedSnap.docs) {
-              var start = (schedDoc['actual_start_time'] as Timestamp).toDate();
-              var end = (schedDoc['actual_end_time'] as Timestamp).toDate();
+        Timestamp actualEndTimeTimestamp = doc['waktu_akhir'];
 
-              activityData['actual_start'] = start;
-              activityData['actual_end'] = end;
+        DateTime actualEndTime = actualEndTimeTimestamp.toDate();
 
-              activity.add(activityData);
-            }
-          }
-        }
+        String actualEndTimeString = actualEndTime.toString();
+
+        QuerySnapshot locQuerySnapshot = await FirebaseFirestore.instance
+            .collection('lokasis')
+            .where('kegiatans_id', isEqualTo: doc.id)
+            .get();
+
+        List<Locations> locations = locQuerySnapshot.docs.map((locDoc) {
+          Map<String, dynamic> locData = locDoc.data() as Map<String, dynamic>;
+          return Locations(
+            address: locData['alamat'] as String,
+            latitude: locData['latitude'] as double,
+            longitude: locData['longitude'] as double,
+          );
+        }).toList();
+
+        String categoriesId = doc['kategoris_id'];
+        Map<String, dynamic> categoryData;
+        DocumentSnapshot categoryDoc = await FirebaseFirestore.instance
+            .collection('kategoris')
+            .doc(categoriesId)
+            .get();
+        categoryData = categoryDoc.data() as Map<String, dynamic>;
+
+        ActivityList activity = ActivityList(
+          idActivity: doc.id,
+          title: doc['nama'],
+          startTime: actualStartTimeString,
+          endTime: actualEndTimeString,
+          importantType: doc['tipe_kepentingan'],
+          urgentType: doc['tipe_mendesak'],
+          colorA: categoryData['warna_a'],
+          colorR: categoryData['warna_r'],
+          colorG: categoryData['warna_g'],
+          colorB: categoryData['warna_b'],
+          locations: locations,
+        );
+
+        activitiesList.add(activity);
       }
       return ProfileClass(
         email: userData['email'],
         name: userData['name'],
         path: imageUrl,
-        activity: activity,
+        activity: activitiesList,
       );
     }
     return null;
   }
 
   // Change format time to hh:mm PM/AM
-  String getActivityTimeOnly(DateTime time) {
+  String getActivityTimeOnly(String activityTime) {
+    DateTime time = DateTime.parse(activityTime);
+
     String formattedTime = DateFormat("hh:mm a").format(time);
 
     return formattedTime;
   }
 
   String getPriorityCategory(String importance, String urgent) {
-    if (importance == "Important" && urgent == "Urgent") {
-      return "Golf";
-    } else if (importance == "Important" && urgent == "Not Urgent") {
-      return "Pebbles";
-    } else if (importance == "Not Important" && urgent == "Urgent") {
-      return "Sand";
+    if (importance == "Penting" && urgent == "Mendesak") {
+      return "Bola Golf";
+    } else if (importance == "Penting" && urgent == "Tidak Mendesak") {
+      return "Kerikil";
+    } else if (importance == "Tidak Penting" && urgent == "Mendesak") {
+      return "Pasir";
     } else {
-      return "Water";
+      return "Air";
     }
   }
 
   Color getPriorityColor(String priorityType) {
-    if (priorityType == 'Golf') {
+    if (priorityType == 'Bola Golf') {
       return Colors.red;
-    } else if (priorityType == 'Pebbles') {
+    } else if (priorityType == 'Kerikil') {
       return Colors.yellow;
-    } else if (priorityType == 'Sand') {
+    } else if (priorityType == 'Pasir') {
       return Colors.green;
     } else {
       return Colors.blue;
@@ -153,7 +183,6 @@ class _ProfileState extends State<Profile> {
   @override
   void initState() {
     super.initState();
-    // bacaData();
     userApp = getProfile();
   }
 
@@ -181,10 +210,13 @@ class _ProfileState extends State<Profile> {
             return Center(
               child: GestureDetector(
                 onTap: () {
+                  setState(() {
+                    isLoginManual = false;
+                  });
                   doLogout();
                 },
                 child: Text(
-                  'No Profiles Found',
+                  'Profil Tidak Ditemukan',
                   style: textStyleBoldWhite,
                 ),
               ),
@@ -206,7 +238,7 @@ class _ProfileState extends State<Profile> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        "My Profile",
+                        "Profil Saya",
                         style: screenTitleStyleWhite,
                       ),
                       GestureDetector(
@@ -321,7 +353,7 @@ class _ProfileState extends State<Profile> {
                                   thickness: 1,
                                 ),
                                 Text(
-                                    "You've Got ${user.activity?.length ?? 0} Activities Today",
+                                    "Hari ini kamu memiliki ${user.activity?.length ?? 0} kegiatan",
                                     style: subHeaderStyleBold),
                                 const Divider(
                                   color: Colors.black,
@@ -343,18 +375,18 @@ class _ProfileState extends State<Profile> {
                                 Container(
                                   alignment: Alignment.centerLeft,
                                   child: Text(
-                                    "Reminder",
+                                    "Kegiatan",
                                     style: textStyleBoldGrey,
                                   ),
                                 ),
                                 Container(
                                   alignment: Alignment.centerLeft,
                                   child: Text(
-                                    "For Today",
+                                    "Untuk hari ini",
                                     style: textStyleBold,
                                   ),
                                 ),
-                                user.activity!.isEmpty
+                                activitiesList.isEmpty
                                     ? Container(
                                         width: double.infinity,
                                         margin: const EdgeInsets.only(top: 5),
@@ -388,11 +420,11 @@ class _ProfileState extends State<Profile> {
                                                     CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
-                                                    "No activity today",
+                                                    "Tidak ada kegiatan untuk hari",
                                                     style: textStyleBold,
                                                   ),
                                                   Text(
-                                                    "Don't forget to start you bright day with plans, so let's plan your day :)",
+                                                    "Jangan lupa untuk memulai hari cerahmu dengan rencana. Oleh karena itu ayo jadwalkan kegiatanmu.",
                                                     style: textStyle,
                                                   ),
                                                 ],
@@ -415,12 +447,12 @@ class _ProfileState extends State<Profile> {
                                                 MainAxisAlignment.start,
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.center,
-                                            children: user.activity!.map(
+                                            children: activitiesList.map(
                                               (act) {
                                                 String type =
                                                     getPriorityCategory(
-                                                        act['important_type'],
-                                                        act['urgent_type']);
+                                                        act.importantType,
+                                                        act.urgentType);
                                                 return Container(
                                                   width: MediaQuery.of(context)
                                                           .size
@@ -449,14 +481,19 @@ class _ProfileState extends State<Profile> {
                                                           MainAxisAlignment
                                                               .center,
                                                       children: [
-                                                        Text(
-                                                          act['title'],
-                                                          style:
-                                                              textStyleBoldGrey,
+                                                        Expanded(
+                                                          child: Text(
+                                                            act.title,
+                                                            style:
+                                                                textStyleBoldGrey,
+                                                          ),
                                                         ),
-                                                        Text(
-                                                          "${getActivityTimeOnly(act['actual_start'])} - ${getActivityTimeOnly(act['actual_end'])}",
-                                                          style: textStyleBold,
+                                                        Expanded(
+                                                          child: Text(
+                                                            "${getActivityTimeOnly(act.startTime)} - ${getActivityTimeOnly(act.endTime)}",
+                                                            style:
+                                                                textStyleBold,
+                                                          ),
                                                         ),
                                                       ],
                                                     ),
@@ -519,7 +556,7 @@ class _ProfileState extends State<Profile> {
                                           ),
                                           child: // Space between icon and text
                                               Text(
-                                            'Edit Profile',
+                                            'Ubah Profil',
                                             style: textStyleBoldWhite,
                                           ),
                                         ),
@@ -536,11 +573,7 @@ class _ProfileState extends State<Profile> {
                                               builder: (context) =>
                                                   const ChangePassword(),
                                             ),
-                                          ).then((result) {
-                                            if (result == true) {
-                                              doLogout();
-                                            }
-                                          });
+                                          );
 
                                           setState(() {
                                             getProfile();
@@ -565,7 +598,7 @@ class _ProfileState extends State<Profile> {
                                           ),
                                           child: // Space between icon and text
                                               Text(
-                                            'Change Password',
+                                            'Ganti Kata Sandi',
                                             style: textStyleBold,
                                           ),
                                         ),
@@ -599,7 +632,7 @@ class _ProfileState extends State<Profile> {
                                       ),
                                       child: // Space between icon and text
                                           Text(
-                                        'Edit Profile',
+                                        'Ubah Profil',
                                         style: textStyleBoldWhite,
                                       ),
                                     ),

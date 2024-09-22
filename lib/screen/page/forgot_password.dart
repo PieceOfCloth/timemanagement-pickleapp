@@ -166,11 +166,9 @@ class _MyForgotPasswordState extends State<MyForgotPassword> {
                             context: context,
                             builder: (BuildContext context) {
                               return AlertDialog(
-                                title: Expanded(
-                                  child: Text(
-                                    'Atur Ulang Kata Sandi',
-                                    style: subHeaderStyleBold,
-                                  ),
+                                title: Text(
+                                  'Atur Ulang Kata Sandi',
+                                  style: subHeaderStyleBold,
                                 ),
                                 content: Text(
                                   'Apakah kamu yakin untuk mengganti kata sandi?',
