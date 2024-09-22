@@ -1,6 +1,6 @@
 # Pickle App - Time Management App
 
-Pickle App is a Flutter-based time management app that helps you to stay organized in your schedule, prioritize tasks, and stay focused on what's important. This app is designed to make managing your time easier and more efficient.
+Pickle App is a Flutter-based time management app that helps you to stay organized in your schedule, prioritize tasks, and stay focused on what's important. This app is designed to make managing your time easier and more efficient. *I use this code for my thesis and there are still some redundant codes*
 
 ## Getting Started
 To get started with timemanagement-pickleapp, follow these steps (*Don't include the quotation marks*):
@@ -10,13 +10,13 @@ To get started with timemanagement-pickleapp, follow these steps (*Don't include
 3. *Install dependencies:* "flutter pub get"
 4. *Run the app:* "flutter run"
 
-For detailed setup instructions, including Firebase configuration, continue to the next section.
+For *Database setup instructions*, including Firebase configuration, continue to the next section.
 
 ## Firebase Setup for Flutter
-This guide will help you set up Firebase for your Flutter app. Follow these steps to configure Firebase in your project:
+This guide will help you set up Firebase for Pickle App. Follow these steps to configure Firebase in your project:
 
-Step 1: Create a Firebase Project
-Go to the Firebase Console.
+*Step 1: Create a Firebase Project*
+1. Go to the Firebase Console.
 Click on Add project and enter a project name.
 (Optional) Configure Google Analytics for your project.
 Click Create Project and wait for the process to complete.
