@@ -1,4 +1,4 @@
-# Pickle App - Time Management App
+# Pickle App - Time Management App Installation
 
 Pickle App is a Flutter-based time management app that helps you to stay organized in your schedule, prioritize tasks, and stay focused on what's important. This app is designed to make managing your time easier and more efficient. *I use this code for my thesis and there are still some redundant codes*
 
